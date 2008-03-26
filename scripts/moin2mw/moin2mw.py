@@ -19,22 +19,36 @@ import codecs
 
 def _table_xlat(data):
     in_table = False
+    has_class = False
     result = []
-
+    #sys.stderr.write("Data: %s" % data)
     for line in data.splitlines(True):
         if line.startswith(u"||"):
             if not in_table:
+                if line.startswith(u"||<tableclass"):
+                    result.append(u"{{message/notice")
+                    has_class = True
+                elif line.startswith(u"||<tablestyle"):
+                    result.append(u"{|")
+                else:
+                    result.append(u"{| border=\"1\"\n")
                 in_table = True
-                result.append(u"{| border=\"1\"\n")
             newline = line[1:]
             while newline[-1] in (u"|", u" "):
                 newline = newline[:-1]
+
+            newline = re.sub('\<tableclass.*"\>', '', newline)
+            newline = re.sub('\<tablestyle.*"\>', '', newline)
             result.append(newline)
             result.append(u"|-\n")
         else:
             if in_table:
-                result.append(u"|}\n")
+                if has_class:
+                    result.append(u"}}\n")
+                else:
+                    result.append(u"|}\n")
                 in_table = False
+                has_class=False
             result.append(line)
 
     return u''.join(result)
