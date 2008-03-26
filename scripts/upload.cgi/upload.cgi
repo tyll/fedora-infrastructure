@@ -14,6 +14,7 @@ import stat
 import md5
 import tempfile
 import StringIO
+import grp
 
 sys.path.append('/var/fedora-accounts')
 import website
@@ -106,7 +107,8 @@ pieces = os.environ['REQUEST_URI'].split('/')
 assert pieces[1] == 'repo'
 if do_userdb_auth:
     #need_auth = need_auth or not website.have_group(dbh, auth_username, 'cvs' + pieces[2])
-    need_auth = need_auth or not website.have_group(dbh, auth_username, 'cvsextras')
+    #need_auth = need_auth or not website.have_group(dbh, auth_username, 'cvsextras')
+    need_auth = need_auth or not auth_username in grp.getgrnam('cvsextras')[3]
 auth_msg = "You do not have the appropriate authorization to upload. %s %s %s" % (dbh, auth_username, 'cvs' + pieces[2])
 
 if need_auth:
