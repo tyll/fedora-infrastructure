@@ -39,8 +39,9 @@ def _table_xlat(data):
 
             newline = re.sub('\<tableclass.*"\>', '', newline)
             newline = re.sub('\<tablestyle.*"\>', '', newline)
+            newline = newline.rstrip().rstrip('||').rstrip()
             result.append(newline)
-            result.append(u"|-\n")
+            result.append(u"\n|-\n")
         else:
             if in_table:
                 if has_class:
@@ -130,8 +131,8 @@ def _remove_toc(line):
     return (line, {})
 
 
-chain = [ _fix_links, _escape, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
-          _fix_numlists, _fix_pre, _unspace_text, _kill_link_prefixes, _remove_toc ]
+chain = [ _remove_toc, _fix_links, _escape, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
+          _fix_numlists, _fix_pre, _unspace_text, _kill_link_prefixes ]
 
 class MoinWiki(object):
     def __init__(self, wiki_path):
