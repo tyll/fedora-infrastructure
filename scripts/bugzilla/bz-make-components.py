@@ -269,7 +269,7 @@ bugzilla to reflect the ownership of bugzilla products that are listed there.
             warnings.append(str(e.args))
 
     if warnings:
-        print '[DEBUG]', '\n'.join(warnings)
+        #print '[DEBUG]', '\n'.join(warnings)
         send_email('accounts@fedoraproject.org', 'a.badger@gmail.com',
                 'Errors while syncing bugzilla with owners.list',
 '''
