@@ -21,15 +21,11 @@
 #
 
 import sys
-import os
-import errno
-import website
-import crypt
+import urllib2
 import getopt
 import xmlrpclib
 from email.Message import Message
 import smtplib
-
 
 # Set this to the production bugzilla account when we're ready to go live
 BZSERVER = 'https://bugdev.devel.redhat.com/bugzilla-cvs/xmlrpc.cgi'
@@ -38,7 +34,7 @@ BZSERVER = 'https://bugdev.devel.redhat.com/bugzilla-cvs/xmlrpc.cgi'
 BZUSER='<%= bzAdminUser %>'
 BZPASS='<%= bzAdminPassword %>'
 
-DRY_RUN = False
+DRY_RUN = True
 
 class Bugzilla(object):
     def __init__(self, bzServer, username, password):
@@ -49,11 +45,11 @@ class Bugzilla(object):
 
         self.server = xmlrpclib.Server(bzServer)
 
-    def add_edit_component(self, package, collection,owner, description,
+    def add_edit_component(self, package, collection, owner, description,
             qacontact=None, cclist=None):
         '''Add or updatea component to have the values specified.
         '''
-        initialCCList = cclist or list()
+        initialCCList = [p.lower() for p in cclist] or list()
 
         # Lookup product
         try:
@@ -135,11 +131,14 @@ class Bugzilla(object):
                 data['product'] = collection
                 data['component'] = product[pkgKey]['component']
                 if DRY_RUN:
+                    for key in data:
+                        if isinstance(data[key], basestring):
+                            data[key] = data[key].encode('ascii', 'replace')
                     print '[EDITCOMP] Changing via editComponent(%s, %s, "xxxxx")' % (
                             data, self.username)
                     print '[EDITCOMP] Former values: %s|%s|%s' % (
                             product[pkgKey]['initialowner'],
-                            product[pkgKey]['description'],
+                            product[pkgKey]['description'].encode('ascii', 'replace'),
                             product[pkgKey]['initialqacontact'])
                 else:
                     try:
@@ -169,6 +168,9 @@ class Bugzilla(object):
                 data['initialcclist'] = initialCCList
 
             if DRY_RUN:
+                for key in data:
+                    if isinstance(data[key], basestring):
+                        data[key] = data[key].encode('ascii', 'replace')
                 print '[ADDCOMP] Adding new component AddComponent:(%s, %s, "xxxxx")' % (
                         data, self.username)
             else:
@@ -180,24 +182,24 @@ class Bugzilla(object):
                     e.args = (data, e.faultCode, e.faultString)
                     raise
 
-def parseOwnerFile(curfile, warnings):
+def parseOwnerFile(url, warnings):
     pkgInfo = []
-    ownerFile = file(curfile, 'r')
-    while line in ownerFile:
-        line = line.strip()
+    ownerFile = urllib2.urlopen(url)
+    for line in ownerFile:
+        line = unicode(line, 'utf-8').strip()
         if not line or line[0] == '#':
             continue
         pieces = line.split('|')
         try:
             product, component, summary, owner, qa = pieces[:5]
         except:
-            warnings.append('%s: Invalid line %s' % (curfile, line))
+            warnings.append('%s: Invalid line %s' % (url, line))
 
         owners = owner.split(',')
         owner = owners[0]
         cclist = owners[1:] or []
         if not owner:
-            warnings.append('%s: No owner in line %s' % (curfile, line))
+            warnings.append('%s: No owner in line %s' % (url, line))
             continue
 
         if len(pieces) > 5 and pieces[5].strip():
@@ -206,7 +208,7 @@ def parseOwnerFile(curfile, warnings):
 
         if product != 'Fedora' and not product.startswith('Fedora '):
             warnings.append('%s: Invalid product %s in line %s' %
-                    (curfile, product, line))
+                    (url, product, line))
             continue
         pkgInfo.append({'product': product, 'component': component,
             'owner': owner, 'summary': summary, 'qa': qa, 'cclist': cclist})
@@ -230,7 +232,11 @@ def send_email(fromAddress, toAddress, subject, message):
 if __name__ == '__main__':
     opts, args = getopt.getopt(sys.argv[1:], '', ('usage', 'help'))
     if len(args) < 1 or ('--usage','') in opts or ('--help','') in opts:
-        print """Usage: bz-make-components.py FILENAME..."""
+        print """Usage: bz-make-components.py URL1 [URL2]...
+
+This script takes URLs to files in owners.list format and makes changes in
+bugzilla to reflect the ownership of bugzilla products that are listed there.
+"""
         sys.exit(1)
 
     # Initialize connection to bugzilla
@@ -240,23 +246,17 @@ if __name__ == '__main__':
     # Iterate through the files in the argument list.  Grab the owner
     # information from each one and construct bugzilla information from it.
     pkgData = []
-    for curfile in args:
-        if not os.path.exists(curfile):
-            warnings.append('%s does not exist' % curfile)
-            continue
-        pkgData.extend(parseOwnerFile(curfile, warnings))
+    for url in args:
+        pkgData.extend(parseOwnerFile(url, warnings))
 
     for pkgInfo in pkgData:
         try:
-            bugzilla.add_edit_component(pkgInfo['product'],
-                    pkgInfo['component'], pkgInfo['owner'], pkgInfo['summary'],
-                    pkgInfo['qa'], pkgInfo['cclist'])
+            bugzilla.add_edit_component(pkgInfo['component'],
+                            pkgInfo['product'], pkgInfo['owner'],
+                            pkgInfo['summary'], pkgInfo['qa'],
+                            pkgInfo['cclist'])
         except ValueError, e:
             # A username didn't have a bugzilla address
-            warnings.append(str(e.args))
-        except DataChangedError, e:
-            # A Package or Collection was returned via xmlrpc but wasn't
-            # present when we tried to change it
             warnings.append(str(e.args))
         except xmlrpclib.ProtocolError, e:
             # Unrecoverable and likely means that nothing is going to
@@ -269,7 +269,7 @@ if __name__ == '__main__':
             warnings.append(str(e.args))
 
     if warnings:
-        # print '[DEBUG]', '\n'.join(warnings)
+        print '[DEBUG]', '\n'.join(warnings)
         send_email('accounts@fedoraproject.org', 'a.badger@gmail.com',
                 'Errors while syncing bugzilla with owners.list',
 '''
