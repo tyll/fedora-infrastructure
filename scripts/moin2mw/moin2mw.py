@@ -55,16 +55,21 @@ def _table_xlat(data):
     return u''.join(result)
 
 def _escape(line):
+    return (line, {})
 #    line = line.replace(u">", u"&gt;")
 #    line = line.replace(u"<", u"&lt;")
 #    line = re.sub(ur'&(?![a-z]+;)', u"&amp;", line)
-    return (line, {})
 
 def _fix_comments(line):
     if line.startswith(u"##"):
         line = u"<!--%s-->\n" % line[2:]
 
     return (line, {})
+
+def _fix_redirect(line):
+    if line.startswith(u"#redirect"):
+        line = u"#REDIRECT %s" % line.split(" ")[2:]
+    return(line, {})
 
 def _find_meta(line):
     try:
@@ -79,6 +84,18 @@ def _find_meta(line):
 def _studlycaps(line):
 #    line = re.sub(ur'\b(?<!\!)([A-Z][a-z]+?[A-Z][A-Za-z0-9]*)', 
 #                  ur'[[\1]]', line)
+    return (line, {})
+
+def _fix_anchors(line):
+    
+    if line.find('[[Anchor') != -1 or line.find('[[ Anchor') != -1:
+        line = line.replace('[[', '{{')
+        line = line.replace(')]]', '}}')
+        line = line.replace(') ]]', '}}')
+        line = line.replace('(', '|')
+#    if line.find('<<Anchor(') != -1:
+#        line = re.subn(ur'\<\<Anchor\(', '{{Anchor|', line, 1)[0]
+#        line = re.subn(ur'\)\>\>', '}}', line, 1)[0]
     return (line, {})
 
 def _fix_bullets(line):
@@ -96,14 +113,44 @@ def _fix_numlists(line):
 
     return (line, {})
 
+def _fix_admonition(line):
+#    while line.find(ur'[[Admonition') != -1:
+#        line = re.subn(ur'\[\[Admonition', '<<Admonition', line, 1)[0]
+#        line = re.subn(ur'\]\]', '>>', line, 1)[0]
+    return (line, {})
+
+def _fix_get_val(line):
+    split_line = line.split(']]')
+    e = []
+    for s in split_line:
+        if s.find('[[GetVal') != -1:
+            s = s.replace('[[GetVal', '{{Template:',1)
+            s = s.replace(',', '/', 1)
+            s = s.replace('(', '', 1)
+            s = s.replace(')', '', 1)
+            s = s + '}}'
+        e.append(s)
+    line = ' '.join(e)
+
+    return (line, {})
+
 def _fix_pre(line):
-    if line.find('{{{') and line.find('}}}'):
+    if line.find('{{{') != -1 and line.find('}}}') != -1:
         line = re.sub(r'\{\{\{', "<code>", line)
         line = re.sub(r'\}\}\}', "</code>", line)
     else:
         line = re.sub(r'\{\{\{', "<pre>", line)
         line = re.sub(r'\}\}\}', "</pre>", line)
+    return (line, {})
 
+#def _fix_big_links(line):
+#    line = re.sub(ur'\[:([^:]+):([^]]+)]', ur'[\1|\2]', line)
+#    return (line, {})
+
+def _fix_code_blocks(line):
+    while line.find('`') != -1:
+        line = re.subn(ur'`', '<code>', line, 1)[0]
+        line = re.subn(ur'`', '</code>', line, 1)[0]
     return (line, {})
 
 def _unspace_text(line):
@@ -119,8 +166,33 @@ def _kill_link_prefixes(line):
     line = re.sub(ur'[A-Za-z]+\:\[\[', u"[[", line)
     return (line, {})
 
+def _fix_line_breaks(line):
+    line = line.replace('[[BR]]', '<BR>')
+    return (line, {})
+
+def _fix_headers(line):
+    ''' This is Fedora specific '''
+    line = line.replace('<h2>', '==')
+    line = line.replace('</h2>', '==')
+    line = line.replace('<H2>', '==')
+    line = line.replace('</H2>', '==')
+    return (line, {})
+
 def _fix_links(line):
-    line = re.sub(ur'\[\:(.*)\:(.*)\]', ur"[[\1 |\2]]", line)
+    split_line = line.split(']')
+#while f.find('[:') != -1:
+    e = []
+    for s in split_line:
+        if s.find('[:') != -1:
+            s = s.replace('[:', '[[',1)
+            s = s.replace(':', '| ', 1)
+            s = s.replace(']', ']]', 1)
+            s = s + ']]'
+        elif s.find('[') != -1:
+            s = s + ']'
+        e.append(s)
+    line = ' '.join(e)
+#    line = re.sub(ur'\[\:(.*)\:(.*)\]', ur"[[\1 |\2]]", line)
 #    line = re.sub(r'\[\[', "[[ ", line)
 #    line = re.sub(r'\]\]', " ]]", line)
     return (line, {})
@@ -131,8 +203,8 @@ def _remove_toc(line):
     return (line, {})
 
 
-chain = [ _remove_toc, _fix_links, _escape, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
-          _fix_numlists, _fix_pre, _unspace_text, _kill_link_prefixes ]
+chain = [ _fix_line_breaks, _fix_headers, _fix_anchors, _remove_toc, _fix_get_val, _fix_links, _escape, _fix_redirect, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
+          _fix_numlists, _unspace_text, _kill_link_prefixes, _fix_code_blocks, _fix_pre, _fix_admonition ]
 
 class MoinWiki(object):
     def __init__(self, wiki_path):
