@@ -23,12 +23,13 @@ def _table_xlat(data):
     result = []
     #sys.stderr.write("Data: %s" % data)
     for line in data.splitlines(True):
-        if line.startswith(u"||"):
+        if line.strip(':').strip().startswith(u"||"):
             if not in_table:
-                if line.startswith(u"||<tableclass"):
-                    result.append(u"{{message/notice")
+                if line.strip().startswith(u"||<tableclass"):
+                    #result.append(u"{{message/notice")
+                    result.append(u"{|")
                     has_class = True
-                elif line.startswith(u"||<tablestyle"):
+                elif line.strip().startswith(u"||<tablestyle"):
                     result.append(u"{|")
                 else:
                     result.append(u"{| border=\"1\"\n")
@@ -120,6 +121,8 @@ def _fix_admonition(line):
     return (line, {})
 
 def _fix_get_val(line):
+    if line.find('Category:') != -1:
+        return (line, {})
     split_line = line.split(']]')
     e = []
     for s in split_line:
@@ -128,10 +131,16 @@ def _fix_get_val(line):
             s = s.replace(',', '/', 1)
             s = s.replace('(', '', 1)
             s = s.replace(')', '', 1)
-            s = s + '}}'
+            s = s.strip() + '}}\n'
         e.append(s)
     line = ' '.join(e)
 
+    return (line, {})
+
+def _fix_include(line):
+    if line.find('[[Include') != -1:
+        line = line.replace('[[Include(', '{{:')
+        line = line.replace(')]]', '}}')
     return (line, {})
 
 def _fix_pre(line):
@@ -170,6 +179,15 @@ def _fix_line_breaks(line):
     line = line.replace('[[BR]]', '<BR>')
     return (line, {})
 
+def _fix_categories(line):
+    if line.startswith('Category'):
+        line = line.replace('Category', '[[Category:')
+        line = line.strip() + ']]'
+
+        #line = line.replace('\n', ']]')
+
+    return (line, {})
+
 def _fix_headers(line):
     ''' This is Fedora specific '''
     line = line.replace('<h2>', '==')
@@ -179,6 +197,8 @@ def _fix_headers(line):
     return (line, {})
 
 def _fix_links(line):
+    if line.find('Category:') != -1:
+        return (line, {})
     split_line = line.split(']')
 #while f.find('[:') != -1:
     e = []
@@ -198,13 +218,36 @@ def _fix_links(line):
     return (line, {})
 
 def _remove_toc(line):
+    return (line, {})
     if not line.find('TableOfContents') == -1:
         line = re.sub(r'\[\[.*TableOfContents.*\]\]', '', line)
     return (line, {})
 
+def _fix_attachments(line, page_name):
+    result = []
+    if line.find('attachment:') != -1:
+        dest = page_name.replace('(2f)', '_') + '_'
+        skipFirst=1
+        for l in line.split('attachment:'):
+            if skipFirst==1:
+                result.append(l)
+                skipFirst=0
+                continue
+            l = "[[Image:%s%s" % (dest, l)
+            l = re.subn(ur'([A-Za-z0-9:_\.\-]*)([A-Za-z0-9])', ur'\1\2]]', l, 1)[0]
+            result.append(l)
+        line = ''.join(result)
+        # crazy hack, fix triples (they happen from linked moin images)
+        line = line.replace('[[[', '[[')
+        line = line.replace(']]]', ']]')
+    return (line)
 
-chain = [ _fix_line_breaks, _fix_headers, _fix_anchors, _remove_toc, _fix_get_val, _fix_links, _escape, _fix_redirect, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
-          _fix_numlists, _unspace_text, _kill_link_prefixes, _fix_code_blocks, _fix_pre, _fix_admonition ]
+
+chain = [ _remove_toc, _fix_line_breaks, _fix_categories, _fix_headers, _fix_anchors, 
+          _fix_include, _fix_get_val, _fix_links, _escape,
+          _fix_redirect, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
+          _fix_numlists, _unspace_text, _kill_link_prefixes, _fix_code_blocks,
+          _fix_pre, _fix_admonition ]
 
 class MoinWiki(object):
     def __init__(self, wiki_path):
@@ -246,13 +289,17 @@ class MoinWiki(object):
 
         return new_page_name
 
-    def _chain_translate_file(self, f):
+    def _chain_translate_file(self, f, page_name):
         result = []
         resultmeta = {}
+        if page_name.find('MoinEditorBackup') != -1:
+            return (result, resultmeta)
         for line in f:
             for chaincall in chain:
                 (line, meta) = chaincall(line)
                 resultmeta.update(meta)
+            # fix_attachments is fedora specific and requites pagename
+            line = _fix_attachments(line, page_name)
             result.append(line)
 
         result = _table_xlat(u''.join(result))
@@ -299,7 +346,8 @@ class MoinWiki(object):
         text_file = codecs.open(u"%s/revisions/%s" % (page_path,
             revnum), 'r', 'utf-8')
         (results[u"text"], results[u"meta"]) = \
-            self._chain_translate_file(text_file)
+            self._chain_translate_file(text_file, orig_page_name)
+        #sys.stderr.write("page_path: %s\n" % orig_page_name)
         text_file.close()
 
         return results
