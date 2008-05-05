@@ -24,31 +24,53 @@ def _table_xlat(data):
     #sys.stderr.write("Data: %s" % data)
     for line in data.splitlines(True):
         if line.strip(':').strip().startswith(u"||"):
+            # Gut the html stuff until we figure out what to do with it
+            #line = re.sub(r'<([a-zA-Z\/][^>])*>', '\1|', line)
             if not in_table:
                 if line.strip().startswith(u"||<tableclass"):
                     #result.append(u"{{message/notice")
-                    result.append(u"{|")
+                    #tableclass = re.sub(r'.*<([a-zA-Z\/][^>]*)>.*', r'\1', line.split('>')[0] + '>')
+                    tableclass = re.sub(r'.*<([a-zA-Z\/][^>]*)>(.*)', r'\1 | \2', line).replace('tableclass="', 'Template:').replace(' ', '/', 1).replace('"', '', 1)
+                    result.append(u"{{ %s" % tableclass)
                     has_class = True
                 elif line.strip().startswith(u"||<tablestyle"):
-                    result.append(u"{|")
+                    tablestyle = re.sub(r'.*<([a-zA-Z\/][^>]*)>.*', r'\1', line.split('>')[0] + '>')
+                    tablestyle = tablestyle.replace('tablestyle', 'style')
+                    result.append(u"{| %s" % tablestyle)
                 else:
-                    result.append(u"{| border=\"1\"\n")
+                    result.append(u"{| border=\"1\"")
                 in_table = True
             newline = line[1:]
             while newline[-1] in (u"|", u" "):
                 newline = newline[:-1]
 
-            newline = re.sub('\<tableclass.*"\>', '', newline)
-            newline = re.sub('\<tablestyle.*"\>', '', newline)
+            #newline = re.sub('\<tableclass.*"\>', '', newline)
+            #newline = re.sub('\<tablestyle.*"\>', '', newline)
             newline = newline.rstrip().rstrip('||').rstrip()
-            result.append(newline)
-            result.append(u"\n|-\n")
+            #newline = re.sub(r'.*<([a-zA-Z\/][^>]*)>.*', r'\1 |', newline)
+            #newline = re.sub(r'<([a-zA-Z\/][^>]*)>', r'\1 |', newline)
+            newline = re.sub(r'<tablestyle[=a-zA-Z\/][^>]*>', r'', newline)
+            # Ugh nasty
+            if newline.find('rowstyle') != -1:
+                newline = re.sub(r'<([a-zA-Z\/][^>]*)>', r'\1 \n|', newline)
+                newline = newline.replace('|rowstyle', 'style')
+                newline = newline.replace('| rowstyle', 'style')
+                result.append(u"\n|- %s" % newline)
+            else:
+                newline = newline.replace('<style', 'style')
+                newline = newline.replace('">', '" |')
+                newline = newline.replace('" >', '" |')
+                newline = newline.replace("'>", "' |")
+                newline = newline.replace("' >", "' |")
+                if not has_class:
+                    result.append(u"\n|-")
+                    result.append("\n" + newline)
         else:
             if in_table:
                 if has_class:
-                    result.append(u"}}\n")
+                    result.append(u"\n}}\n")
                 else:
-                    result.append(u"|}\n")
+                    result.append(u"\n|}\n")
                 in_table = False
                 has_class=False
             result.append(line)
@@ -203,13 +225,18 @@ def _fix_links(line):
 #while f.find('[:') != -1:
     e = []
     for s in split_line:
+#        sys.stderr.write("s before: %s\n" % s)
         if s.find('[:') != -1:
             s = s.replace('[:', '[[',1)
-            s = s.replace(':', '| ', 1)
+            tmp = s.split('[[')
+            #sys.stderr.write("0: " + tmp[0])
+            #sys.stderr.write("1: " + tmp[1])
+            s = tmp[0] + '[[' + tmp[1].replace(':', '| ', 1)
             s = s.replace(']', ']]', 1)
             s = s + ']]'
         elif s.find('[') != -1:
             s = s + ']'
+        #sys.stderr.write("s after: %s\n" % s)
         e.append(s)
     line = ' '.join(e)
 #    line = re.sub(ur'\[\:(.*)\:(.*)\]', ur"[[\1 |\2]]", line)
@@ -218,9 +245,8 @@ def _fix_links(line):
     return (line, {})
 
 def _remove_toc(line):
-    return (line, {})
-    if not line.find('TableOfContents') == -1:
-        line = re.sub(r'\[\[.*TableOfContents.*\]\]', '', line)
+    line = line.replace('[[TableOfContents]]', '')
+    line = line.replace('[[ TableOfContents ]]', '')
     return (line, {})
 
 def _fix_attachments(line, page_name):
