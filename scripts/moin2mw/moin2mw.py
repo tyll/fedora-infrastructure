@@ -23,31 +23,54 @@ def _table_xlat(data):
     result = []
     #sys.stderr.write("Data: %s" % data)
     for line in data.splitlines(True):
-        if line.startswith(u"||"):
+        if line.strip(':').strip().startswith(u"||"):
+            # Gut the html stuff until we figure out what to do with it
+            #line = re.sub(r'<([a-zA-Z\/][^>])*>', '\1|', line)
             if not in_table:
-                if line.startswith(u"||<tableclass"):
-                    result.append(u"{{message/notice")
+                if line.strip().startswith(u"||<tableclass"):
+                    #result.append(u"{{message/notice")
+                    #tableclass = re.sub(r'.*<([a-zA-Z\/][^>]*)>.*', r'\1', line.split('>')[0] + '>')
+                    tableclass = re.sub(r'.*<([a-zA-Z\/][^>]*)>(.*)', r'\1 | \2', line).replace('tableclass="', 'Template:').replace(' ', '/', 1).replace('"', '', 1)
+                    result.append(u"{{ %s" % tableclass)
                     has_class = True
-                elif line.startswith(u"||<tablestyle"):
-                    result.append(u"{|")
+                elif line.strip().startswith(u"||<tablestyle"):
+                    tablestyle = re.sub(r'.*<([a-zA-Z\/][^>]*)>.*', r'\1', line.split('>')[0] + '>')
+                    tablestyle = tablestyle.replace('tablestyle', 'style')
+                    result.append(u"{| %s" % tablestyle)
                 else:
-                    result.append(u"{| border=\"1\"\n")
+                    result.append(u"{| border=\"1\"")
                 in_table = True
             newline = line[1:]
             while newline[-1] in (u"|", u" "):
                 newline = newline[:-1]
 
-            newline = re.sub('\<tableclass.*"\>', '', newline)
-            newline = re.sub('\<tablestyle.*"\>', '', newline)
+            #newline = re.sub('\<tableclass.*"\>', '', newline)
+            #newline = re.sub('\<tablestyle.*"\>', '', newline)
             newline = newline.rstrip().rstrip('||').rstrip()
-            result.append(newline)
-            result.append(u"\n|-\n")
+            #newline = re.sub(r'.*<([a-zA-Z\/][^>]*)>.*', r'\1 |', newline)
+            #newline = re.sub(r'<([a-zA-Z\/][^>]*)>', r'\1 |', newline)
+            newline = re.sub(r'<tablestyle[=a-zA-Z\/][^>]*>', r'', newline)
+            # Ugh nasty
+            if newline.find('rowstyle') != -1:
+                newline = re.sub(r'<([a-zA-Z\/][^>]*)>', r'\1 \n|', newline)
+                newline = newline.replace('|rowstyle', 'style')
+                newline = newline.replace('| rowstyle', 'style')
+                result.append(u"\n|- %s" % newline)
+            else:
+                newline = newline.replace('<style', 'style')
+                newline = newline.replace('">', '" |')
+                newline = newline.replace('" >', '" |')
+                newline = newline.replace("'>", "' |")
+                newline = newline.replace("' >", "' |")
+                if not has_class:
+                    result.append(u"\n|-")
+                    result.append("\n" + newline)
         else:
             if in_table:
                 if has_class:
-                    result.append(u"}}\n")
+                    result.append(u"\n}}\n")
                 else:
-                    result.append(u"|}\n")
+                    result.append(u"\n|}\n")
                 in_table = False
                 has_class=False
             result.append(line)
@@ -55,16 +78,21 @@ def _table_xlat(data):
     return u''.join(result)
 
 def _escape(line):
+    return (line, {})
 #    line = line.replace(u">", u"&gt;")
 #    line = line.replace(u"<", u"&lt;")
 #    line = re.sub(ur'&(?![a-z]+;)', u"&amp;", line)
-    return (line, {})
 
 def _fix_comments(line):
     if line.startswith(u"##"):
         line = u"<!--%s-->\n" % line[2:]
 
     return (line, {})
+
+def _fix_redirect(line):
+    if line.startswith(u"#redirect"):
+        line = u"#REDIRECT %s" % line.split(" ")[2:]
+    return(line, {})
 
 def _find_meta(line):
     try:
@@ -79,6 +107,18 @@ def _find_meta(line):
 def _studlycaps(line):
 #    line = re.sub(ur'\b(?<!\!)([A-Z][a-z]+?[A-Z][A-Za-z0-9]*)', 
 #                  ur'[[\1]]', line)
+    return (line, {})
+
+def _fix_anchors(line):
+    
+    if line.find('[[Anchor') != -1 or line.find('[[ Anchor') != -1:
+        line = line.replace('[[', '{{')
+        line = line.replace(')]]', '}}')
+        line = line.replace(') ]]', '}}')
+        line = line.replace('(', '|')
+#    if line.find('<<Anchor(') != -1:
+#        line = re.subn(ur'\<\<Anchor\(', '{{Anchor|', line, 1)[0]
+#        line = re.subn(ur'\)\>\>', '}}', line, 1)[0]
     return (line, {})
 
 def _fix_bullets(line):
@@ -96,14 +136,52 @@ def _fix_numlists(line):
 
     return (line, {})
 
+def _fix_admonition(line):
+#    while line.find(ur'[[Admonition') != -1:
+#        line = re.subn(ur'\[\[Admonition', '<<Admonition', line, 1)[0]
+#        line = re.subn(ur'\]\]', '>>', line, 1)[0]
+    return (line, {})
+
+def _fix_get_val(line):
+    if line.find('Category:') != -1:
+        return (line, {})
+    split_line = line.split(']]')
+    e = []
+    for s in split_line:
+        if s.find('[[GetVal') != -1:
+            s = s.replace('[[GetVal', '{{Template:',1)
+            s = s.replace(',', '/', 1)
+            s = s.replace('(', '', 1)
+            s = s.replace(')', '', 1)
+            s = s.strip() + '}}\n'
+        e.append(s)
+    line = ' '.join(e)
+
+    return (line, {})
+
+def _fix_include(line):
+    if line.find('[[Include') != -1:
+        line = line.replace('[[Include(', '{{:')
+        line = line.replace(')]]', '}}')
+    return (line, {})
+
 def _fix_pre(line):
-    if line.find('{{{') and line.find('}}}'):
+    if line.find('{{{') != -1 and line.find('}}}') != -1:
         line = re.sub(r'\{\{\{', "<code>", line)
         line = re.sub(r'\}\}\}', "</code>", line)
     else:
         line = re.sub(r'\{\{\{', "<pre>", line)
         line = re.sub(r'\}\}\}', "</pre>", line)
+    return (line, {})
 
+#def _fix_big_links(line):
+#    line = re.sub(ur'\[:([^:]+):([^]]+)]', ur'[\1|\2]', line)
+#    return (line, {})
+
+def _fix_code_blocks(line):
+    while line.find('`') != -1:
+        line = re.subn(ur'`', '<code>', line, 1)[0]
+        line = re.subn(ur'`', '</code>', line, 1)[0]
     return (line, {})
 
 def _unspace_text(line):
@@ -119,20 +197,83 @@ def _kill_link_prefixes(line):
     line = re.sub(ur'[A-Za-z]+\:\[\[', u"[[", line)
     return (line, {})
 
+def _fix_line_breaks(line):
+    line = line.replace('[[BR]]', '<BR>')
+    return (line, {})
+
+def _fix_categories(line):
+    if line.startswith('Category'):
+        line = line.replace('Category', '[[Category:')
+        line = line.strip() + ']]'
+
+        #line = line.replace('\n', ']]')
+
+    return (line, {})
+
+def _fix_headers(line):
+    ''' This is Fedora specific '''
+    line = line.replace('<h2>', '==')
+    line = line.replace('</h2>', '==')
+    line = line.replace('<H2>', '==')
+    line = line.replace('</H2>', '==')
+    return (line, {})
+
 def _fix_links(line):
-    line = re.sub(ur'\[\:(.*)\:(.*)\]', ur"[[\1 |\2]]", line)
+    if line.find('Category:') != -1:
+        return (line, {})
+    split_line = line.split(']')
+#while f.find('[:') != -1:
+    e = []
+    for s in split_line:
+#        sys.stderr.write("s before: %s\n" % s)
+        if s.find('[:') != -1:
+            s = s.replace('[:', '[[',1)
+            tmp = s.split('[[')
+            #sys.stderr.write("0: " + tmp[0])
+            #sys.stderr.write("1: " + tmp[1])
+            s = tmp[0] + '[[' + tmp[1].replace(':', '| ', 1)
+            s = s.replace(']', ']]', 1)
+            s = s + ']]'
+        elif s.find('[') != -1:
+            s = s + ']'
+        #sys.stderr.write("s after: %s\n" % s)
+        e.append(s)
+    line = ' '.join(e)
+#    line = re.sub(ur'\[\:(.*)\:(.*)\]', ur"[[\1 |\2]]", line)
 #    line = re.sub(r'\[\[', "[[ ", line)
 #    line = re.sub(r'\]\]', " ]]", line)
     return (line, {})
 
 def _remove_toc(line):
-    if not line.find('TableOfContents') == -1:
-        line = re.sub(r'\[\[.*TableOfContents.*\]\]', '', line)
+    line = line.replace('[[TableOfContents]]', '')
+    line = line.replace('[[ TableOfContents ]]', '')
     return (line, {})
 
+def _fix_attachments(line, page_name):
+    result = []
+    if line.find('attachment:') != -1:
+        dest = page_name.replace('(2f)', '_') + '_'
+        skipFirst=1
+        for l in line.split('attachment:'):
+            if skipFirst==1:
+                result.append(l)
+                skipFirst=0
+                continue
+            l = "[[Image:%s%s" % (dest, l)
+            l = re.subn(ur'([A-Za-z0-9:_\.\-]*)([A-Za-z0-9])', ur'\1\2]]', l, 1)[0]
+            result.append(l)
+        line = ''.join(result)
+        # crazy hack, fix triples (they happen from linked moin images)
+        line = line.replace('[[[', '[[')
+        line = line.replace(']]]', ']]')
+    return (line)
 
-chain = [ _remove_toc, _fix_links, _escape, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
-          _fix_numlists, _fix_pre, _unspace_text, _kill_link_prefixes ]
+
+chain = [ _remove_toc, _fix_line_breaks, _fix_categories, _fix_headers, _fix_anchors, 
+          _fix_include, _fix_get_val, _fix_links, _escape,
+          _fix_redirect, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
+          _fix_numlists, _unspace_text, _kill_link_prefixes, _fix_code_blocks,
+          _fix_pre, _fix_admonition ]
 
 class MoinWiki(object):
     def __init__(self, wiki_path):
@@ -174,13 +315,17 @@ class MoinWiki(object):
 
         return new_page_name
 
-    def _chain_translate_file(self, f):
+    def _chain_translate_file(self, f, page_name):
         result = []
         resultmeta = {}
+        if page_name.find('MoinEditorBackup') != -1:
+            return (result, resultmeta)
         for line in f:
             for chaincall in chain:
                 (line, meta) = chaincall(line)
                 resultmeta.update(meta)
+            # fix_attachments is fedora specific and requites pagename
+            line = _fix_attachments(line, page_name)
             result.append(line)
 
         result = _table_xlat(u''.join(result))
@@ -227,7 +372,8 @@ class MoinWiki(object):
         text_file = codecs.open(u"%s/revisions/%s" % (page_path,
             revnum), 'r', 'utf-8')
         (results[u"text"], results[u"meta"]) = \
-            self._chain_translate_file(text_file)
+            self._chain_translate_file(text_file, orig_page_name)
+        #sys.stderr.write("page_path: %s\n" % orig_page_name)
         text_file.close()
 
         return results
