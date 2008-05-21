@@ -136,13 +136,27 @@ def _fix_numlists(line):
 
     return (line, {})
 
+def _fix_tips(line):
+    line = line.replace('{i}', '{{Template:Note}}')
+    line = line.replace('(!)', '{{Template:Tip}}')
+    line = line.replace('{*}', '{{Template:Important}}')
+    line = line.replace('<!>', '{{Template:Caution}}')
+    line = line.replace('/!\\', '{{Template:Warning}}')
+
+    return (line, {})
+
 def _fix_admonition(line):
 #    while line.find(ur'[[Admonition') != -1:
 #        line = re.subn(ur'\[\[Admonition', '<<Admonition', line, 1)[0]
 #        line = re.subn(ur'\]\]', '>>', line, 1)[0]
+    if line.find('[[Admonition') != -1:
+        line = line.replace('[[Admonition', 'Admonition')
+        line = line.replace('")]', '")')
     return (line, {})
 
 def _fix_get_val(line):
+    if line.find('[[GetVal') == -1:
+        return (line, {})
     if line.find('Category:') != -1:
         return (line, {})
     split_line = line.split(']]')
@@ -154,6 +168,8 @@ def _fix_get_val(line):
             s = s.replace('(', '', 1)
             s = s.replace(')', '', 1)
             s = s.strip() + '}}\n'
+        else:
+            s = s + ']]'
         e.append(s)
     line = ' '.join(e)
 
@@ -185,6 +201,7 @@ def _fix_code_blocks(line):
     return (line, {})
 
 def _unspace_text(line):
+    return (line, {})
     if len(line) > 0 and line[0] == " ":
         while len(line) > 0 and line[0] == " ":
             line = line[1:]
@@ -202,12 +219,12 @@ def _fix_line_breaks(line):
     return (line, {})
 
 def _fix_categories(line):
+    if line.startswith('["Category'):
+        line = line.replace('["', '')
+        line = line.replace('"]', '')
     if line.startswith('Category'):
         line = line.replace('Category', '[[Category:')
-        line = line.strip() + ']]'
-
-        #line = line.replace('\n', ']]')
-
+        line = line.strip() + ']]\n'
     return (line, {})
 
 def _fix_headers(line):
@@ -234,6 +251,8 @@ def _fix_links(line):
             s = tmp[0] + '[[' + tmp[1].replace(':', '| ', 1)
             s = s.replace(']', ']]', 1)
             s = s + ']]'
+#        elif s.find('[http') != -1:
+#            s = s.replace('[http', 'http', 1)
         elif s.find('[') != -1:
             s = s + ']'
         #sys.stderr.write("s after: %s\n" % s)
@@ -249,7 +268,22 @@ def _remove_toc(line):
     line = line.replace('[[ TableOfContents ]]', '')
     return (line, {})
 
+def _fix_image_link(line, page_name):
+    result=[]
+    if line.find('ImageLink') != -1:
+        for l in line.split('[[ImageLink('):
+            if not l.strip():
+                continue
+            dest = page_name.replace('(2f)', '_') + '_'
+            l = l.replace(')]]', ']]')
+            l = l.replace(') ]]', ']]')
+            l = "[[Image:%s%s" % (dest, l)
+            result.append(l)
+        line = ''.join(result)
+    return (line)
+
 def _fix_attachments(line, page_name):
+
     result = []
     if line.find('attachment:') != -1:
         dest = page_name.replace('(2f)', '_') + '_'
@@ -273,7 +307,7 @@ chain = [ _remove_toc, _fix_line_breaks, _fix_categories, _fix_headers, _fix_anc
           _fix_include, _fix_get_val, _fix_links, _escape,
           _fix_redirect, _fix_comments, _find_meta, _studlycaps, _fix_bullets,
           _fix_numlists, _unspace_text, _kill_link_prefixes, _fix_code_blocks,
-          _fix_pre, _fix_admonition ]
+          _fix_pre, _fix_admonition, _fix_tips ]
 
 class MoinWiki(object):
     def __init__(self, wiki_path):
@@ -321,7 +355,9 @@ class MoinWiki(object):
         if page_name.find('MoinEditorBackup') != -1:
             return (result, resultmeta)
         for line in f:
+            line = _fix_image_link(line.strip(), page_name) + "\n"
             for chaincall in chain:
+                #sys.stderr.write(line + "\n")
                 (line, meta) = chaincall(line)
                 resultmeta.update(meta)
             # fix_attachments is fedora specific and requites pagename
