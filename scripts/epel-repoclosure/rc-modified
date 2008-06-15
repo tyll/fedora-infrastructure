@@ -50,13 +50,15 @@ def parseArgs():
     parser.add_option("-r", "--repoid", default=[], action='append',
         help="specify repo ids to query, can be specified multiple times (default is all enabled)")
     parser.add_option("-t", "--tempcache", default=False, action="store_true", 
-        help="Use a temp dir for storing/accessing yum-cache")
+        help="use a temp dir for storing/accessing yum-cache")
     parser.add_option("-d", "--cachedir", default='', 
         help="specify a custom directory for storing/accessing yum-cache")
     parser.add_option("-q", "--quiet", default=0, action="store_true", 
                       help="quiet (no output to stderr)")
     parser.add_option("-n", "--newest", default=0, action="store_true",
                       help="check only the newest packages in the repos")
+    parser.add_option("", "--nomultilibhack", default=False, action="store_true",
+                      help="disable multi-lib hack")
     (opts, args) = parser.parse_args()
     return (opts, args)
 
@@ -72,7 +74,9 @@ class RepoClosure(yum.YumBase):
         if hasattr(self.repos, 'sqlite'):
             self.repos.sqlite = False
             self.repos._selectSackType()
-    
+
+        self.guessMultiLibProbs = True
+
     def evrTupletoVer(self,tuple):
         """convert and evr tuple to a version string, return None if nothing
         to convert"""
@@ -100,10 +104,42 @@ class RepoClosure(yum.YumBase):
             except TypeError:
                 self.repos.populateSack(which=[repo.id], with='filelists')
 
+    def isnewest(self, pkg):
+        newest = pkg.pkgtup in self.newestpkgtuplist
+
+        if not self.guessMultiLibProbs:
+            return newest
+
+        # Multi-lib hack:
+        #
+        # This is supposed to catch corner-cases, such as:
+        # Base-arch pkg was updated, but a corresponding compat-arch pkg
+        # is not included in the repo, because e.g. it was repackaged
+        # and no longer is pulled in by the multi-lib resolver.
+        # Assume, that if it the old compat-arch pkg is in the repo,
+        # there is no upgrade path from biarch installs to single-arch
+        # (the one pkg upgrades two installed pkgs with different arch)
+
+        (n,a,e,v,r) = pkg.pkgtup
+
+        if newest or a=='noarch':
+            return newest  # the trivial case
+
+        for provpkg in self.pkgSack.returnNewestByName(n):
+            prov_a = provpkg.pkgtup[1]
+            if prov_a=='noarch' or prov_a==a:
+                (prov_e, prov_v, prov_r) = provpkg.pkgtup[2:]
+                vercmp = rpmUtils.miscutils.compareEVR( (prov_e,prov_v,prov_r), (e,v,r) )
+                if vercmp>0:  # provpkg is newer
+                    return False
+        # No noarch/same-arch pkg is newer, but a basearch pkg may be newer
+        # and therefore be the only one in newestpkgtuplist.
+        return True
+
     def getBrokenDeps(self, newest=False):
         unresolved = {}
         resolved = {}
-        newpkgtuplist = []
+        self.newestpkgtuplist = []
         if newest:
             if yum.__version__ >= '2.9':  # TODO: check
                 pkgs = self.pkgSack.returnNewestByName()
@@ -111,7 +147,7 @@ class RepoClosure(yum.YumBase):
                 pkgs = []
                 for l in self.pkgSack.returnNewestByName():
                     pkgs.extend(l)
-            newestpkgtuplist = ListPackageSack(pkgs).simplePkgList()
+            self.newestpkgtuplist = ListPackageSack(pkgs).simplePkgList()
 
             pkgs = self.pkgSack.returnNewestByNameArch()
         else:
@@ -142,19 +178,6 @@ class RepoClosure(yum.YumBase):
                 except AttributeError:
                     pass
 
-            def isnotnewest(pkg):
-                # Handle noarch<->arch switches in package updates, so any
-                # old nevra returned by returnNewestByNameArch() are skipped.
-                # TODO: There must be a more elegant/convenient way.
-                if (pkg.pkgtup[1] == 'noarch'):
-                    if (pkg.pkgtup not in newestpkgtuplist):
-                        return True
-                else:
-                    for p in self.pkgSack.returnNewestByName(pkg.pkgtup[0]):
-                        if (p.pkgtup[1] == 'noarch') and (p.pkgtup in newestpkgtuplist):
-                            return True
-                return False
-
             for (req, flags, (reqe, reqv, reqr)) in pkg.returnPrco('requires'):
                 if req.startswith('rpmlib'): continue # ignore rpmlib deps
             
@@ -167,7 +190,7 @@ class RepoClosure(yum.YumBase):
                     pass
             
                 if len(resolve_sack) < 1:
-                    if newest and isnotnewest(pkg):
+                    if newest and not self.isnewest(pkg):
                         break
                     if not unresolved.has_key(pkg):
                         unresolved[pkg] = []
@@ -181,7 +204,7 @@ class RepoClosure(yum.YumBase):
                 
                 if newest and not kernelprovides and not req.startswith('kernel'): # we allow old kernels
                     resolved_by_newest = False
-                    for po in resolve_sack:# look through and make sure all our answers are newest-only
+                    for po in resolve_sack:# look through and make sure any of our answers are newest-only
 
                         # 2nd stage handling of obsoletes. Only keep providers,
                         # which are not obsolete. If no provider is left, the
@@ -202,7 +225,7 @@ class RepoClosure(yum.YumBase):
                     if resolved_by_newest:                    
                         resolved[(req,flags,ver)] = 1
                     else:
-                        if newest and isnotnewest(pkg):
+                        if newest and not self.isnewest(pkg):
                             break
                         if not unresolved.has_key(pkg):
                             unresolved[pkg] = []
@@ -217,6 +240,7 @@ class RepoClosure(yum.YumBase):
 def main():
     (opts, cruft) = parseArgs()
     my = RepoClosure(arch = opts.arch, config = opts.config)
+    my.guessMultiLibProbs = not opts.nomultilibhack
     
     if opts.repoid:
         for repo in my.repos.repos.values():

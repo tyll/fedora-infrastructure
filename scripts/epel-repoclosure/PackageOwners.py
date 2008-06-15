@@ -23,17 +23,6 @@ import tempfile
 from urllib import FancyURLopener
 
 
-class AccountsURLopener(FancyURLopener):
-    """Subclass of urllib.FancyURLopener to allow passing http basic auth info"""
-    def __init__(self, username, password):
-        FancyURLopener.__init__(self)
-        self.username = username
-        self.password = password
-
-    def prompt_user_passwd(self, host, realm):
-        return (self.username, self.password)
-
-
 class PackageOwners:
     """interface to Fedora package owners list (and Fedora Extras owners/owners.list file)"""
 
@@ -219,8 +208,8 @@ class PackageOwners:
             if count != 0:
                 time.sleep(self.retrysecs)
             try:
-                opener = AccountsURLopener(self.username, self.password)
-                f = opener.open(url)
+                opener = FancyURLopener()
+                f = opener.open(url, data='user_name=%s&password=%s&login=Login' % (self.username, self.password))
                 rc = 0
                 if 'www-authenticate' in f.headers:
                     rc = 1
@@ -245,7 +234,11 @@ class PackageOwners:
 
 
     def _downloadfrompkgdb(self):
-        fasdump = self._getlinesfromurl('https://admin.fedoraproject.org/accounts/dump-group.cgi')
+        # Construct an URL that makes FancyURLopener use authentication
+        # with the first request and not just in return to 401.
+        fas2authurl = 'https://admin.fedoraproject.org/accounts/group/dump/'
+
+        fasdump = self._getlinesfromurl(fas2authurl)
         self.usermap = {}
         for line in fasdump:
             fields = line.split(',')

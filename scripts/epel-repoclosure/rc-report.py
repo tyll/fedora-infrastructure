@@ -334,7 +334,7 @@ for toaddr,(new,body) in reports.iteritems():
     mailtext += giveNeedsignMsg()
     mailtext += giveTestingMsg()
     mailtext += body
-    if domail and ('owners' in opts.mail) and toaddr!='UNKNOWN OWNER':
+    if domail and ('owner' in opts.mail) and toaddr!='UNKNOWN OWNER':
         subject = Mail['subject'] + ' - %s' % datetime.date.today()
         mail( srv, Mail['from'], toaddr, Mail['replyto'], subject, mailtext )
 
