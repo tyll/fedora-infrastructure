@@ -244,7 +244,7 @@ class PackageOwners:
             fields = line.split(',')
             try:
                 user = fields[0]
-                addr = fields[1]
+                addr = '%s@fedoraproject.org' % user
             except IndexError:
                 print line
                 raise

@@ -13,7 +13,7 @@ process_deps()
     mail=$4
     [ -z $4 ] && mail="no" || mail="yes"
     [ $arch = "ppc" ] && arch_label=ppc64 || arch_label=$arch
-    command="/usr/local/bin/rc-modified -d mdcache -n -c $YUM_CONF_LOC -a $arch_label -r rhel-$release-$arch -r fedora-epel-$release-$arch"
+    command="/usr/local/bin/rc-modified -d mdcache -n -c $YUM_CONF_LOC -a $arch_label -r rhel-$release-$arch -r fedora-epel-$release-$arch -r buildsys-$release-$arch -r rhel-$arch-server-productivity-$release"
     [ $release -eq 5 ] && command="$command -r rhel-$release-$arch-vt "
     [ "$testing" =  "testing" ] && command="$command -r fedora-epel-testing-$release-$arch "
     OUTFILE=$OUTPUT_DIR/epel${release}${arch}-$DATE.txt
