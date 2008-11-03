@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<rss version="2.0">
+<channel>
+	<title><TMPL_VAR name></title>
+	<link><TMPL_VAR link></link>
+	<language>en</language>
+        <description>Fedora People: http://planet.fedoraproject.org</description>
+
+<TMPL_LOOP Items>
+<item>
+	<title><TMPL_VAR channel_name><TMPL_IF title>: <TMPL_VAR title></TMPL_IF></title>
+	<guid><TMPL_VAR id></guid>
+	<link><TMPL_VAR link></link>
+	<TMPL_IF content>
+
+	<description>
+		<TMPL_IF channel_face>
+			&lt;img src=&quot;<TMPL_VAR channel_face>&quot; <TMPL_IF channel_facewidth>width=&quot;<TMPL_VAR channel_facewidth>&quot; </TMPL_IF><TMPL_IF channel_faceheight>height=&quot;<TMPL_VAR channel_faceheight>&quot; </TMPL_IF> alt=&quot;&quot; style=&quot;float: right;&quot;&gt;
+		</TMPL_IF>
+		<TMPL_VAR content ESCAPE="HTML"></description>
+	</TMPL_IF>
+	<pubDate><TMPL_VAR date_822></pubDate>
+</item>
+</TMPL_LOOP>
+
+</channel>
+</rss>
