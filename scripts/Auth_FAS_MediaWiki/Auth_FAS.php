@@ -27,7 +27,7 @@
 			$groups = $response["person"]["approved_memberships"];
 
 			for ($i = 0, $cnt = count($groups); $i < $cnt; $i++) {
-   				if ($groups[$i]["name"] = "cla_done") {
+   				if ($groups[$i]["name"] == "cla_done") {
 				       return true;
 				}
 			}
@@ -106,10 +106,9 @@
  */
 $wgExtensionCredits['other'][] = array(
    'name' => 'Auth_FAS',
-   'version' => '0.9',
+   'version' => '0.9.1',
    'author' => 'Nigel Jones',
    'description' => 'Authorisation plugin allowing login with FAS2 accounts'#,
-#   'url' => 'http://www.mediawiki.org/wiki/Extension:PwAuthPlugin'
 );
 
 ?>
