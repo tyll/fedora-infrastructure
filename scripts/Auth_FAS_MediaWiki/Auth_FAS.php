@@ -15,10 +15,11 @@
 			curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".urlencode($username)."&user_name=".urlencode($username)."&password=".urlencode($password)."&login=Login");
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 			curl_setopt($ch, CURLOPT_VERBOSE, 0);
-			# I hate chained certificates
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-			# This is only required because of the wildcard cert on pt10
-			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+            # The following two lines need to be enabled when using a test FAS
+            # with an invalid cert.  Otherwise they should be commented (or 
+            # set to True) for security.
+			#curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+			#curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
 			$response = json_decode(curl_exec($ch), true);
 			curl_close ($ch);
 
