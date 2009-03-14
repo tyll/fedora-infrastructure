@@ -1,11 +1,8 @@
 #!/bin/bash
 
-CHECK='/usr/bin/wget -qO- http://publictest8.fedora.phx.redhat.com/koji/builds | /bin/grep -c failed.png'
-WARNING=7
-CRITICAL=15
-
-FAILURES=$(/usr/bin/wget -qO- http://publictest8.fedora.phx.redhat.com/koji/builds | /bin/grep -c failed.png)
-
+FAILURES=$(/usr/bin/wget -q --no-check-certificate -O- http://koji1.fedora.phx.redhat.com/koji/builds | /bin/grep -c failed.png)
+WARNING=20
+CRITICAL=25
 
 if [ $FAILURES -gt $CRITICAL ]
 then
