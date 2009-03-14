@@ -31,8 +31,6 @@ CACHE_DIR = '/srv/cache/lookaside/pkgs'
 PACKAGER_GROUP = 'packager'
 
 def send_error(text):
-    print 'Content-type: text/plain'
-    print
     print text
     sys.exit(1)
 
@@ -44,21 +42,22 @@ def check_form(form, var):
         send_error('Multiple values given for "%s". Aborting.' % var)
     return ret
 
-def main():
-    os.umask(002)
-
+def check_auth():
     authenticated = False
-
     if os.environ.has_key('SSL_CLIENT_S_DN_CN'):
         auth_username = os.environ['SSL_CLIENT_S_DN_CN']
         if auth_username in grp.getgrnam(PACKAGER_GROUP)[3]:
             authenticated = True
+    return authenticated
 
-    if not authenticated:
+def main():
+    os.umask(002)
+
+    if not check_auth():
         print 'Status: 403 Forbidden'
         print 'Content-type: text/plain'
         print
-        print 'You must be in the %s group to upload.' % PACKAGER_GROUP
+        print 'You must connect with a valid certificate and be in the %s group to upload.' % PACKAGER_GROUP
         sys.exit(0)
 
     print 'Content-Type: text/plain'
@@ -100,8 +99,7 @@ def main():
     cvs_dir = os.path.join(CVSREPO, name)
     if not os.path.isdir(cvs_dir):
         print >> sys.stderr, 'Unknown module: %s' % name
-        print 'Module "%s" does not exist!' % name
-        sys.exit(-9)
+        send_error('Module "%s" does not exist!' % name)
         
     # try to see if we already have this file...
     dest_file = os.path.join(md5_dir, filename)
@@ -116,7 +114,7 @@ def main():
         sys.exit(0)
     elif action == 'check':
         print 'Missing'
-        sys.exit(-9)
+        sys.exit(0)
 
     # check that all directories are in place
     if not os.path.isdir(module_dir):
