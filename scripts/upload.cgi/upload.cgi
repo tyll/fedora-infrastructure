@@ -96,8 +96,7 @@ else:
     print >> sys.stderr, 'Processing upload request: NAME=%s FILENAME=%s MD5SUM=%s' % (name, filename, md5sum)
 
 module_dir = os.path.join(CACHE_DIR, name)
-file_dir = os.path.join(module_dir, filename)
-md5_dir =  os.path.join(file_dir, md5sum)
+md5_dir =  os.path.join(module_dir, filename, md5sum)
 
 # first test if the module really exists
 cvs_dir = os.path.join(CVSREPO, name)
@@ -126,19 +125,20 @@ if not os.path.isdir(module_dir):
     os.makedirs(module_dir, 02775)
 
 # grab a temporary filename and dump our file in there
-tempfile.tempdir = my_moddir
+tempfile.tempdir = module_dir
 tmpfile = tempfile.mktemp(md5sum)
 tmpfd = open(tmpfile, 'w')
 
 # now read the whole file in
 m = md5_constructor()
 filesize = 0
-while s = upload_file.file.read(BUFFER_SIZE):
-    if not s:
+while True:
+    data = upload_file.file.read(BUFFER_SIZE)
+    if not data:
     	break
-    tmpfd.write(s)
-    m.update(s)
-    filesize += len(s)
+    tmpfd.write(data)
+    m.update(data)
+    filesize += len(data)
 
 # now we're done reading, check the MD5 sum of what we got
 tmpfd.close()

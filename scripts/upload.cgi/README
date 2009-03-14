@@ -5,23 +5,23 @@ to date ;)
 
 Alias /repo/pkgs/ /repo/pkgs/
 
-   <Directory /repo/pkgs/>
-       SSLVerifyClient optional
-       SSLVerifyDepth 1
-       SSLOptions +StrictRequire +StdEnvVars +OptRenegotiate
-        # require that the access comes from internal or that
-        # the client auth cert was created by us and signed by us
-       SSLRequire ( %{SSL_CIPHER} !~ m/^(EXP|NULL)/ \
-                  and %{SSL_CLIENT_S_DN_O} eq "Fedora Project" \
-                  and %{SSL_CLIENT_I_DN_O} eq "Fedora Project" \
-                  and %{SSL_CLIENT_I_DN_OU} eq "Upload Files" )
-   </Directory>
+<Directory /repo/pkgs/>
+  SSLVerifyClient optional
+  SSLVerifyDepth 1
+  SSLOptions +StrictRequire +StdEnvVars +OptRenegotiate
+  # require that the access comes from internal or that
+  # the client auth cert was created by us and signed by us
+  SSLRequire ( %{SSL_CIPHER} !~ m/^(EXP|NULL)/ \
+    and %{SSL_CLIENT_S_DN_O} eq "Fedora Project" \
+    and %{SSL_CLIENT_I_DN_O} eq "Fedora Project" \
+    and %{SSL_CLIENT_I_DN_OU} eq "Upload Files" )
+</Directory>
 
-   <Location "/repo/pkgs/upload.cgi">
-       SetHandler cgi-script
-        Options ExecCGI
-        Order Allow,Deny
-        Allow from all
-        SSLRequireSSL
-    </Location>
+<Location "/repo/pkgs/upload.cgi">
+  SetHandler cgi-script
+  Options ExecCGI
+  Order Allow,Deny
+  Allow from all
+  SSLRequireSSL
+</Location>
 
