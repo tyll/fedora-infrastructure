@@ -44,114 +44,114 @@ def check_form(form, var):
         send_error('Multiple values given for "%s". Aborting.' % var)
     return ret
 
-os.umask(002)
+def main():
+    os.umask(002)
 
-authenticated = False
+    authenticated = False
 
-if os.environ.has_key('SSL_CLIENT_S_DN_CN'):
-    auth_username = os.environ['SSL_CLIENT_S_DN_CN']
-    if auth_username in grp.getgrnam(PACKAGER_GROUP)[3]:
-        authenticated = True
+    if os.environ.has_key('SSL_CLIENT_S_DN_CN'):
+        auth_username = os.environ['SSL_CLIENT_S_DN_CN']
+        if auth_username in grp.getgrnam(PACKAGER_GROUP)[3]:
+            authenticated = True
 
-if not authenticated:
-    print 'Status: 403 Forbidden'
-    print 'Content-type: text/plain'
+    if not authenticated:
+        print 'Status: 403 Forbidden'
+        print 'Content-type: text/plain'
+        print
+        print 'You must be in the %s group to upload.' % PACKAGER_GROUP
+        sys.exit(0)
+
+    print 'Content-Type: text/plain'
     print
-    print 'You must be in the %s group to upload.' % PACKAGER_GROUP
-    sys.exit(0)
 
-print 'Content-Type: text/plain'
-print
+    assert os.environ['REQUEST_URI'].split('/')[1] == 'repo'
 
-assert os.environ['REQUEST_URI'].split('/')[1] == 'repo'
+    form = cgi.FieldStorage()
+    name = check_form(form, 'name')
+    md5sum = check_form(form, 'md5sum')
 
-form = cgi.FieldStorage()
-name = check_form(form, 'name')
-md5sum = check_form(form, 'md5sum')
+    action = None
+    upload_file = None
+    filename = None
 
-action = None
-upload_file = None
-filename = None
-
-# Is this a submission or a test?
-# in a test, we don't get a file, just a filename.
-# In a submission, we don;t get a filename, just the file.
-if form.has_key('filename'):
-    action = 'check'
-    filename = check_form('filename')   
-    filename = os.path.basename(filename)
-    print >> sys.stderr, 'Checking file status: NAME=%s FILENAME=%s MD5SUM=%s' % (name, filename, md5sum)
-else:
-    action = 'upload'
-    if form.has_key('file'):
-        upload_file = form['file']
-        if not upload_file.file:
-            send_error('No file given for upload. Aborting.')
-        try:
+    # Is this a submission or a test?
+    # in a test, we don't get a file, just a filename.
+    # In a submission, we don;t get a filename, just the file.
+    if form.has_key('filename'):
+        action = 'check'
+        filename = check_form(form, 'filename')   
+        filename = os.path.basename(filename)
+        print >> sys.stderr, 'Checking file status: NAME=%s FILENAME=%s MD5SUM=%s' % (name, filename, md5sum)
+    else:
+        action = 'upload'
+        if form.has_key('file'):
+            upload_file = form['file']
+            if not upload_file.file:
+                send_error('No file given for upload. Aborting.')
             filename = os.path.basename(upload_file.filename)
-        except:
-            send_error('Could not extract the filename for upload. Aborting.')
-    else:
-        send_error('Required field "file" is not present.')
-    print >> sys.stderr, 'Processing upload request: NAME=%s FILENAME=%s MD5SUM=%s' % (name, filename, md5sum)
+        else:
+            send_error('Required field "file" is not present.')
+        print >> sys.stderr, 'Processing upload request: NAME=%s FILENAME=%s MD5SUM=%s' % (name, filename, md5sum)
 
-module_dir = os.path.join(CACHE_DIR, name)
-md5_dir =  os.path.join(module_dir, filename, md5sum)
+    module_dir = os.path.join(CACHE_DIR, name)
+    md5_dir =  os.path.join(module_dir, filename, md5sum)
 
-# first test if the module really exists
-cvs_dir = os.path.join(CVSREPO, name)
-if not os.path.isdir(cvs_dir):
-    print >> sys.stderr, 'Unknown module: %s' % name
-    print 'Module "%s" does not exist!' % name
-    sys.exit(-9)
-    
-# try to see if we already have this file...
-dest_file = os.path.join(md5_dir, filename)
-if os.path.exists(dest_file):
-    if action == 'check':
-        print 'Available'
-    else:
-        upload_file.file.close()
-        dest_file_stat = os.stat(dest_file)
-        print 'File %s already exists' % filename
-        print 'File: %s Size: %d' % (dest_file, dest_file_stat.st_size)
-    sys.exit(0)
-elif action == 'check':
-    print 'Missing'
-    sys.exit(-9)
+    # first test if the module really exists
+    cvs_dir = os.path.join(CVSREPO, name)
+    if not os.path.isdir(cvs_dir):
+        print >> sys.stderr, 'Unknown module: %s' % name
+        print 'Module "%s" does not exist!' % name
+        sys.exit(-9)
+        
+    # try to see if we already have this file...
+    dest_file = os.path.join(md5_dir, filename)
+    if os.path.exists(dest_file):
+        if action == 'check':
+            print 'Available'
+        else:
+            upload_file.file.close()
+            dest_file_stat = os.stat(dest_file)
+            print 'File %s already exists' % filename
+            print 'File: %s Size: %d' % (dest_file, dest_file_stat.st_size)
+        sys.exit(0)
+    elif action == 'check':
+        print 'Missing'
+        sys.exit(-9)
 
-# check that all directories are in place
-if not os.path.isdir(module_dir):
-    os.makedirs(module_dir, 02775)
+    # check that all directories are in place
+    if not os.path.isdir(module_dir):
+        os.makedirs(module_dir, 02775)
 
-# grab a temporary filename and dump our file in there
-tempfile.tempdir = module_dir
-tmpfile = tempfile.mktemp(md5sum)
-tmpfd = open(tmpfile, 'w')
+    # grab a temporary filename and dump our file in there
+    tempfile.tempdir = module_dir
+    tmpfile = tempfile.mkstemp(md5sum)
+    tmpfd = open(tmpfile, 'w')
 
-# now read the whole file in
-m = md5_constructor()
-filesize = 0
-while True:
-    data = upload_file.file.read(BUFFER_SIZE)
-    if not data:
-    	break
-    tmpfd.write(data)
-    m.update(data)
-    filesize += len(data)
+    # now read the whole file in
+    m = md5_constructor()
+    filesize = 0
+    while True:
+        data = upload_file.file.read(BUFFER_SIZE)
+        if not data:
+            break
+        tmpfd.write(data)
+        m.update(data)
+        filesize += len(data)
 
-# now we're done reading, check the MD5 sum of what we got
-tmpfd.close()
-check_md5sum = m.hexdigest()
-if md5sum != check_md5sum
-    send_error("MD5 check failed. Received %s instead of %s." % (check_md5sum, md5sum))
+    # now we're done reading, check the MD5 sum of what we got
+    tmpfd.close()
+    check_md5sum = m.hexdigest()
+    if md5sum != check_md5sum:
+        send_error("MD5 check failed. Received %s instead of %s." % (check_md5sum, md5sum))
 
-# wow, even the MD5SUM matches. make sure full path is valid now
-if not os.path.isdir(md5_dir):
-    os.mkdirs(md5_dir, 02775)
-    print >> sys.stderr, 'mkdir %s' % md5_dir
+    # wow, even the MD5SUM matches. make sure full path is valid now
+    if not os.path.isdir(md5_dir):
+        os.makedirs(md5_dir, 02775)
+        print >> sys.stderr, 'mkdir %s' % md5_dir
 
-os.rename(tmpfile, dest_file)
-print >> sys.stderr, 'Stored %s (%d bytes)' % (dest_file, filesize)
-print 'File %s size %d MD5 %s stored OK' % (filename, filesize, md5sum)
+    os.rename(tmpfile, dest_file)
+    print >> sys.stderr, 'Stored %s (%d bytes)' % (dest_file, filesize)
+    print 'File %s size %d MD5 %s stored OK' % (filename, filesize, md5sum)
 
+if __name__ == '__main__':
+    main()
