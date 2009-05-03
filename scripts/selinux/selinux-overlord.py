@@ -129,7 +129,7 @@ class SELinuxOverlord(Overlord):
 
 
 if __name__ == '__main__':
-    parser = OptionParser('usage: %prog [options] [minion1[;minion2]]')
+    parser = OptionParser('usage: %prog [options] [minion(s)]')
     parser.add_option('-s', '--status', action='store_true', dest='status',
                        help='Display the SELinux status of all minions')
     parser.add_option('-e', '--enforced-denials', action='store_true', 
