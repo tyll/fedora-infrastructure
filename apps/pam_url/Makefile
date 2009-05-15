@@ -19,7 +19,6 @@ pamlib := lib64/security
 CFLAGS += -m64
 else
 pamlib := lib/security
-CFLAGS += -m32
 endif
 
 

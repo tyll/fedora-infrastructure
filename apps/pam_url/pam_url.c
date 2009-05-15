@@ -224,7 +224,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
 		debug(pamh, "Could not get password item from pam.");
 	}
 
-	if( NULL == opts.passwd ) // TODO: verify whether token has been set before, if not -> get it
+	if( NULL == opts.passwd )
 	{
 		debug(pamh, "No password. Will ask user for it.");
 		if( PAM_SUCCESS != get_password(pamh, &opts) )
