@@ -213,11 +213,7 @@ int fetch_url(pam_url_opts opts)
 	CURL* eh = NULL;
 	char* post = NULL;
 
-	post = calloc(1,
-					strlen("PSK=") +
-					strlen(opts.PSK) +
-					strlen("&") +
-					strlen(opts.userfield) +
+	post = calloc(1,strlen(opts.userfield) +
 					strlen("=") +
 					strlen(opts.user) +
 					strlen("&") +
@@ -229,8 +225,7 @@ int fetch_url(pam_url_opts opts)
 					strlen(opts.extrafield) +
 					strlen("\0") );
 
-	sprintf(post, "PSK=%s&%s=%s&%s=%s&mode=%s%s",	opts.PSK,
-													opts.userfield,
+	sprintf(post, "%s=%s&%s=%s&mode=%s%s", opts.userfield,
 													(char*)opts.user,
 													opts.passwdfield,
 													(char*)opts.passwd,
