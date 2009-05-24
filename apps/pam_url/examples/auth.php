@@ -16,19 +16,19 @@ if( isset($_POST["user"]) && isset($_POST["pass"]) && isset($_POST["mode"]) )
 
 	switch($_POST["mode"])
 	{
-		case "PAM_AUTH";
+		case "PAM_SM_AUTH";
 			// Perform authing here
 			break;
 
-		case "PAM_ACCT";
+		case "PAM_SM_ACCOUNT";
 			// Perform account aging here
 			break;
 
-		case "PAM_SESS";
+		case "PAM_SM_SESSION";
 			// Perform session management here
 			break;
 
-		case "PAM_PASS";
+		case "PAM_SM_PASSWORD";
 			// Perform password changes here
 			break;
 	}

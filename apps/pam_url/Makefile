@@ -1,7 +1,7 @@
 CFLAGS		+= -fPIC -Wall
  
 ifdef DEBUG
-CFLAGS      += -O0 -ggdb
+CFLAGS      += -O0 -ggdb -DDEBUG=1
 else
 CFLAGS      += -O2
 endif

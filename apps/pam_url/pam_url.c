@@ -91,10 +91,9 @@ typedef struct pam_url_opts_ {
 
 	const void* user;
 	const void* passwd;
-
-	FILE* answer;
-	char* fanswer;
 } pam_url_opts;
+
+char* recvbuff = NULL;
 
 void notice(pam_handle_t* pamh, const char *msg)
 {
@@ -103,7 +102,9 @@ void notice(pam_handle_t* pamh, const char *msg)
 
 void debug(pam_handle_t* pamh, const char *msg)
 {
+#ifdef DEBUG
 	pam_syslog(pamh, LOG_ERR, "%s", msg);
+#endif
 }
 
 int get_password(pam_handle_t* pamh, pam_url_opts* opts)
@@ -174,9 +175,6 @@ int parse_opts(pam_url_opts* opts, int argc, const char** argv, int mode)
 		strcpy(opts->extrafield, argv[4]);
 	}
 
-	opts->fanswer = calloc(1, strlen(tmpnam(NULL)) + 1 );
-	strcpy(opts->fanswer, tmpnam(NULL));
-
 	switch(mode)
 	{
 		case PAM_SM_ACCOUNT:
@@ -199,13 +197,19 @@ int parse_opts(pam_url_opts* opts, int argc, const char** argv, int mode)
 			strcpy(opts->mode,"PAM_SM_AUTH");
 	}
 
-
-	if( NULL == (opts->answer = fopen(opts->fanswer, "w+")) )
-	{
-		return PAM_AUTH_ERR;
-	}
-
 	return PAM_SUCCESS;
+}
+
+size_t curl_wf(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+	if( NULL == recvbuff )
+		recvbuff = calloc(1, strlen(ptr) + 1);
+
+	recvbuff = realloc(recvbuff, strlen(recvbuff) + strlen(ptr) + 1);
+
+	strncat(recvbuff, ptr, sizeof(recvbuff));
+
+	return size*nmemb;
 }
 
 int fetch_url(pam_url_opts opts)
@@ -238,6 +242,14 @@ int fetch_url(pam_url_opts opts)
 	if( NULL == (eh = curl_easy_init() ) )
 		return PAM_AUTH_ERR;
 
+#ifdef DEBUG
+	if( CURLE_OK != curl_easy_setopt(eh, CURLOPT_VERBOSE, 1) )
+	{
+		curl_easy_cleanup(eh);
+		return PAM_AUTH_ERR;
+	}
+#endif
+
 	if( CURLE_OK != curl_easy_setopt(eh, CURLOPT_POSTFIELDS, post) )
 	{
 		curl_easy_cleanup(eh);
@@ -250,7 +262,7 @@ int fetch_url(pam_url_opts opts)
 		return PAM_AUTH_ERR;
 	}
 
-	if( CURLE_OK != curl_easy_setopt(eh, CURLOPT_WRITEDATA, opts.answer) )
+	if( CURLE_OK != curl_easy_setopt(eh, CURLOPT_WRITEFUNCTION, curl_wf) )
 	{
 		curl_easy_cleanup(eh);
 		return PAM_AUTH_ERR;
@@ -295,31 +307,15 @@ int fetch_url(pam_url_opts opts)
 int check_psk(pam_url_opts opts)
 {
 	int ret=0;
-	char* buf;
 
-	if( 0 != access( opts.fanswer, R_OK|W_OK ) || NULL == opts.answer )
+	if( NULL == recvbuff )
 	{
 		ret++;
-		return ret;
-	}
-
-	rewind(opts.answer);
-
-	// buf = calloc(1, 2000);
-
-	if( NULL == fgets(buf, sizeof(buf),opts.answer) )
-	{
-		ret++;
-		rewind(opts.answer);
 		return PAM_AUTH_ERR;
 	}
 
-	if( 0 != strncmp(buf, opts.PSK, strlen(opts.PSK)) )
-	{
+	if( 0 != strncmp(opts.PSK, recvbuff, strlen(opts.PSK)) )
 		ret++;
-	}
-
-	rewind(opts.answer);
 
 	if( 0 != ret )
 	{
@@ -333,8 +329,8 @@ int check_psk(pam_url_opts opts)
 
 void cleanup(pam_url_opts opts)
 {
-	fclose(opts.answer);
-	remove(opts.fanswer);
+	if( NULL != recvbuff )
+		free(recvbuff);
 }
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv)
