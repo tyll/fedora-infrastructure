@@ -16,7 +16,7 @@ PAM module to fetch from URL.
 %setup -n %{name}
 
 %build
-make DESTDIR=%{buildroot} all
+make DEBUG=1 DESTDIR=%{buildroot} all
 
 %install
 make DESTDIR=%{buildroot} install

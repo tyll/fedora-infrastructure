@@ -1,7 +1,7 @@
 CFLAGS		+= -fPIC -Wall
  
 ifdef DEBUG
-CFLAGS      += -O0 -ggdb -DDEBUG
+CFLAGS      += -O0 -ggdb
 else
 CFLAGS      += -O2
 endif
@@ -24,6 +24,8 @@ endif
 
 all: ${obj}
 
+debug:
+	${MAKE} DEBUG=1 all
 
 ${obj}: ${objo}
 	${CC} ${LDFLAGS} -o ${obj} ${objo}
