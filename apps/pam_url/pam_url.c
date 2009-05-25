@@ -23,7 +23,7 @@
  *
  * auth sufficient pam_url.so https://www.example.org/ secret user passwd &do=auth
  * This line forms the following url encoded POST data:
- * ?user=<username>&passwd=<pass>&mode=<PAM_AUTH|PAM_ACCT|PAM_SESS|PAM_PASS>&PSK=secret&do=auth
+ * user=<username>&passwd=<pass>&mode=<PAM_AUTH|PAM_ACCT|PAM_SESS|PAM_PASS>&PSK=secret&do=auth
  * It should return either 200 OK with PSK in the body or 403 Forbidden if unsuccessful.
  */
 
@@ -224,7 +224,7 @@ size_t curl_wf(void *ptr, size_t size, size_t nmemb, void *stream)
 	{
 		oldsize=recvbuf_size;
 		recvbuf_size += nmemb * size;
-		memcpy(&recvbuf[oldsize], ptr, size * nmemb);
+		memcpy(recvbuf + oldsize, ptr, size * nmemb);
 		return(size*nmemb);
 	}
 }
