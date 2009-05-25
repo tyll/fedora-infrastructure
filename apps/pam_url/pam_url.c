@@ -93,7 +93,8 @@ typedef struct pam_url_opts_ {
 	const void* passwd;
 } pam_url_opts;
 
-char* recvbuff = NULL;
+char* recvbuf = NULL;
+size_t recvbuf_size = 0;
 
 void notice(pam_handle_t* pamh, const char *msg)
 {
@@ -202,14 +203,30 @@ int parse_opts(pam_url_opts* opts, int argc, const char** argv, int mode)
 
 size_t curl_wf(void *ptr, size_t size, size_t nmemb, void *stream)
 {
-	if( NULL == recvbuff )
-		recvbuff = calloc(1, strlen(ptr) + 1);
+	size_t oldsize=0;
 
-	recvbuff = realloc(recvbuff, strlen(recvbuff) + strlen(ptr) + 1);
+	if( 0 == size * nmemb )
+		return 0;
 
-	strncat(recvbuff, ptr, sizeof(recvbuff));
+	if( NULL == recvbuf )
+	{
+		if( NULL == ( recvbuf = calloc(nmemb, size) ) )
+		{
+			return 0;
+		}
+	}
 
-	return size*nmemb;
+	if( NULL == ( recvbuf = realloc(recvbuf, recvbuf_size + (nmemb * size)) ) )
+	{
+		return 0;
+	}
+	else
+	{
+		oldsize=recvbuf_size;
+		recvbuf_size += nmemb * size;
+		memcpy(&recvbuf[oldsize], ptr, size * nmemb);
+		return(size*nmemb);
+	}
 }
 
 int fetch_url(pam_url_opts opts)
@@ -308,13 +325,13 @@ int check_psk(pam_url_opts opts)
 {
 	int ret=0;
 
-	if( NULL == recvbuff )
+	if( NULL == recvbuf )
 	{
 		ret++;
 		return PAM_AUTH_ERR;
 	}
 
-	if( 0 != strncmp(opts.PSK, recvbuff, strlen(opts.PSK)) )
+	if( 0 != memcmp(opts.PSK, recvbuf, strlen(opts.PSK)) )
 		ret++;
 
 	if( 0 != ret )
@@ -329,8 +346,10 @@ int check_psk(pam_url_opts opts)
 
 void cleanup(pam_url_opts opts)
 {
-	if( NULL != recvbuff )
-		free(recvbuff);
+	if( NULL != recvbuf )
+		free(recvbuf);
+
+	recvbuf_size=0;
 }
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv)
