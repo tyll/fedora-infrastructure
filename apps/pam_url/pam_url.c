@@ -365,6 +365,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
 			debug(pamh, "Could not get password from user. No TTY?");
 			return PAM_AUTH_ERR;
 		}
+		else
+		{
+			pam_set_item(pamh, PAM_AUTHTOK, opts.passwd);
+		}
 	}
 
 	if( PAM_SUCCESS != parse_opts(&opts, argc, argv, PAM_SM_AUTH) )
