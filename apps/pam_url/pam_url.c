@@ -234,6 +234,12 @@ int fetch_url(pam_url_opts opts)
 	CURL* eh = NULL;
 	char* post = NULL;
 
+	if( NULL == opts.user )
+		opts.user = calloc(1,1);
+
+	if( NULL == opts.passwd )
+		opts.passwd = calloc(1,1);
+
 	post = calloc(1,strlen(opts.userfield) +
 					strlen("=") +
 					strlen(opts.user) +
@@ -453,7 +459,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 
 	cleanup(opts);
 
-	return PAM_AUTH_ERR;
+	return PAM_PERM_DENIED;
 }
 
 PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
