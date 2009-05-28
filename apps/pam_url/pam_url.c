@@ -136,10 +136,10 @@ int parse_opts(pam_url_opts* opts, int argc, const char** argv, int mode)
 	strcpy(opts->userfield, DEF_USER);
 
 	opts->passwdfield = calloc(1, strlen(DEF_PASSWD) + 1);
-	strcpy(opts->passwdfield, "passwd");
+	strcpy(opts->passwdfield, DEF_PASSWD);
 
 	opts->extrafield = calloc(1, strlen(DEF_EXTRA) + 1);
-	strcpy(opts->extrafield, "&mode=login");
+	strcpy(opts->extrafield, DEF_EXTRA);
 
 	if( 0 == argc )
 	{
@@ -464,16 +464,113 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 
 PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
+	pam_url_opts opts;
+	int ret=0;
+	char* addextra = "&PAM_SM_SESSION=open\0";
+	char* tmp;
+
+	if ( PAM_SUCCESS != pam_get_item(pamh, PAM_USER, &opts.user) )
+	{
+		ret++;
+		debug(pamh, "Could not get user item from pam.");
+	}
+
+	if( PAM_SUCCESS != parse_opts(&opts, argc, argv, PAM_SM_SESSION) )
+	{
+		ret++;
+		debug(pamh, "Could not parse module options.");
+	}
+
+	opts.extrafield = realloc(opts.extrafield, strlen(opts.extrafield) + strlen(addextra) + 1);
+	tmp = calloc(1, strlen(opts.extrafield) );
+	sprintf(tmp, "%s", opts.extrafield );
+	sprintf(opts.extrafield, "%s%s", addextra, tmp);
+	free(tmp);
+
+	if( PAM_SUCCESS != fetch_url(opts) )
+	{
+		ret++;
+		debug(pamh, "Could not fetch URL.");
+	}
+
+	if( PAM_SUCCESS != check_psk(opts) )
+	{
+		ret++;
+		debug(pamh, "Pre Shared Key differs from ours.");
+	}
+
+	if( 0 == ret )
+		return PAM_SUCCESS;
+
+	debug(pamh, "Session not registering. Failing.");
+
+	cleanup(opts);
+
 	return PAM_SESSION_ERR;
 }
 
 PAM_EXTERN int pam_sm_close_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
+	pam_url_opts opts;
+	int ret=0;
+	char* addextra = "&PAM_SM_SESSION=close\0";
+	char* tmp;
+
+	if ( PAM_SUCCESS != pam_get_item(pamh, PAM_USER, &opts.user) )
+	{
+		ret++;
+		debug(pamh, "Could not get user item from pam.");
+	}
+
+	if( PAM_SUCCESS != parse_opts(&opts, argc, argv, PAM_SM_SESSION) )
+	{
+		ret++;
+		debug(pamh, "Could not parse module options.");
+	}
+
+	opts.extrafield = realloc(opts.extrafield, strlen(opts.extrafield) + strlen(addextra) + 1);
+	tmp = calloc(1, strlen(opts.extrafield) );
+	sprintf(tmp, "%s", opts.extrafield );
+	sprintf(opts.extrafield, "%s%s", addextra, tmp);
+	free(tmp);
+
+	if( PAM_SUCCESS != fetch_url(opts) )
+	{
+		ret++;
+		debug(pamh, "Could not fetch URL.");
+	}
+
+	if( PAM_SUCCESS != check_psk(opts) )
+	{
+		ret++;
+		debug(pamh, "Pre Shared Key differs from ours.");
+	}
+
+	if( 0 == ret )
+		return PAM_SUCCESS;
+
+	debug(pamh, "Session not releasing. Failing.");
+
+	cleanup(opts);
+
 	return PAM_SESSION_ERR;
 }
 
 PAM_EXTERN int pam_sm_chauthtok(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
+	/*
+	char* oldp = NULL, newp1 = NULL, newp2 = NULL;
+
+	pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &oldp, "%s", " Enter OLD password: ");
+	pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &newp1, "%s"," Enter NEW password: ");
+	pam_prompt(pamh, PAM_PROMPT_ECHO_OFF, &newp2, "%s","Retype NEW password: ");
+
+	if( 0 == strcmp(newp1,newp2) )
+	{
+		return PAM_SUCCESS;
+	}
+
+	*/
 	return PAM_AUTHTOK_ERR;
 }
 
