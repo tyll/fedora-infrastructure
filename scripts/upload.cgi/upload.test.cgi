@@ -99,7 +99,7 @@ def main():
                 send_error('Could not download %s: %s' % (url, e))
             filename = os.path.basename(upload_file.geturl())
         else:
-            send_error('Required field "file" is not present.')
+            send_error('No "file" or "url" value given.')
         print >> sys.stderr, '[username=%s] Processing upload request: NAME=%s FILENAME=%s MD5SUM=%s' % (username, name, filename, md5sum)
 
     module_dir = os.path.join(CACHE_DIR, name)
