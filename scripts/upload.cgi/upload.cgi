@@ -35,25 +35,27 @@ def send_error(text):
     sys.exit(1)
 
 def check_form(form, var):
-    if not form.has_key(var):
+    ret = form.getvalue(var, None)
+    if ret is None:
         send_error('Required field "%s" is not present.' % var)
-    ret = form.getvalue(var)
     if isinstance(ret, list):
         send_error('Multiple values given for "%s". Aborting.' % var)
     return ret
 
-def check_auth():
+def check_auth(username):
     authenticated = False
-    if os.environ.has_key('SSL_CLIENT_S_DN_CN'):
-        auth_username = os.environ['SSL_CLIENT_S_DN_CN']
-        if auth_username in grp.getgrnam(PACKAGER_GROUP)[3]:
+    try:
+        if username in grp.getgrnam(PACKAGER_GROUP)[3]:
             authenticated = True
+    except KeyError:
+        pass
     return authenticated
 
 def main():
     os.umask(002)
 
-    if not check_auth():
+    username = os.environ.get('SSL_CLIENT_S_DN_CN', None)
+    if not check_auth(username):
         print 'Status: 403 Forbidden'
         print 'Content-type: text/plain'
         print
@@ -80,7 +82,7 @@ def main():
         action = 'check'
         filename = check_form(form, 'filename')   
         filename = os.path.basename(filename)
-        print >> sys.stderr, 'Checking file status: NAME=%s FILENAME=%s MD5SUM=%s' % (name, filename, md5sum)
+        print >> sys.stderr, '[username=%s] Checking file status: NAME=%s FILENAME=%s MD5SUM=%s' % (username, name, filename, md5sum)
     else:
         action = 'upload'
         if form.has_key('file'):
@@ -90,7 +92,7 @@ def main():
             filename = os.path.basename(upload_file.filename)
         else:
             send_error('Required field "file" is not present.')
-        print >> sys.stderr, 'Processing upload request: NAME=%s FILENAME=%s MD5SUM=%s' % (name, filename, md5sum)
+        print >> sys.stderr, '[username=%s] Processing upload request: NAME=%s FILENAME=%s MD5SUM=%s' % (username, name, filename, md5sum)
 
     module_dir = os.path.join(CACHE_DIR, name)
     md5_dir =  os.path.join(module_dir, filename, md5sum)
@@ -98,7 +100,7 @@ def main():
     # first test if the module really exists
     cvs_dir = os.path.join(CVSREPO, name)
     if not os.path.isdir(cvs_dir):
-        print >> sys.stderr, 'Unknown module: %s' % name
+        print >> sys.stderr, '[username=%s] Unknown module: %s' % (username, name)
         send_error('Module "%s" does not exist!' % name)
         
     # try to see if we already have this file...
@@ -145,10 +147,10 @@ def main():
     # wow, even the MD5SUM matches. make sure full path is valid now
     if not os.path.isdir(md5_dir):
         os.makedirs(md5_dir, 02775)
-        print >> sys.stderr, 'mkdir %s' % md5_dir
+        print >> sys.stderr, '[username=%s] mkdir %s' % (username, md5_dir)
 
     os.rename(tmpfile, dest_file)
-    print >> sys.stderr, 'Stored %s (%d bytes)' % (dest_file, filesize)
+    print >> sys.stderr, '[username=%s] Stored %s (%d bytes)' % (username, dest_file, filesize)
     print 'File %s size %d MD5 %s stored OK' % (filename, filesize, md5sum)
 
 if __name__ == '__main__':
