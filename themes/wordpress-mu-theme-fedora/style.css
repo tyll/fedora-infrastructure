@@ -1,0 +1,120 @@
+#footer
+{
+  position: relative;
+  font: normal 0.8em/1.5 sans-serif;
+  text-align: center;
+  background: #FFFFFF url(http://fedoraproject.org/static/images/line-bottom.png) 0 0 repeat-x;
+  margin: -90px 0 0;
+  border-bottom: 10px solid #337ACC;
+  height: 50px;
+  padding-bottom: 30px;
+  color: #AAAAAA;
+}
+
+#content
+{
+	padding: 4ex 2ex 120px;
+}
+
+#content a
+{
+  color: #337ACC;
+}
+
+.download-sidebar a:link,
+.download-sidebar a:active,
+.download-sidebar a:visited {
+  color: #FFFFFF!important;
+  font-size: medium;
+  text-decoration: none;
+  font-weight: bold;
+  line-height: 1.5;
+}
+
+h1 {
+ float: left;
+ width: 113px;
+}
+
+h1#blogname {
+  float: none;
+  width: 400px;
+  background-image: none !important;
+  margin-left: 150px;
+}
+
+#head h1 a {
+  background: transparent url(wp-admin_images_wordpress-logo.png) no-repeat scroll 20px 50% !important;
+  margin-left: -8px;
+}
+
+
+h1#blogname a {
+  text-indent: 0px !important;
+  background-image: none !important;
+  width: 100%;
+  margin-top: 44px;
+  margin-bottom: -40px;
+}
+
+h1#blogname a:link,
+h1#blogname a:visited,
+h1#blogname a:active {
+  color: #bbb;
+}
+
+
+ul#wp-sidebar-list {
+  margin-left: -10px;
+  list-style-image: none;
+  list-style-type: none;
+  list-style-position: side !important;
+}
+
+
+ul#wp-sidebar-list li {
+  margin-left: 8px !important;
+  text-transform: uppercase;
+  font-size: 0.9em;
+  font-weight: normal;
+  margin: 2ex 0 1ex;
+}
+
+ul#wp-sidebar-list li:first-line {
+  background-color: yellow;
+
+}
+
+ul#wp-sidebar-list > li > ul li {
+  text-transform: none;
+  border: none;
+  margin: auto;
+}
+
+div#nav {
+  margin-left: 20px !important;
+}
+
+h3.date {
+  color: #aaa !important;
+  font-size: 8pt !important;
+  padding-top: none !important;
+  margin-top: none !important; 
+}
+
+div.post .meta {
+  color: #aaa;
+  padding-bottom: 5px;
+  border-bottom: 1px dotted #ddd;
+  margin-bottom: 10px;
+  font-size: 6pt;
+} 
+
+div.post {
+  width: 90%;
+}
+
+div.post h2 {
+  text-transform: uppercase;
+}
+
