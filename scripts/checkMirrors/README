@@ -1,0 +1,4 @@
+Mirror checking script by davivercillo
+======================================
+Currently only checks the mirrors returned in the mirrorlist, perhaps add a
+&country=global to try and get all mirrors back.
