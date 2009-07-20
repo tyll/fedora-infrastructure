@@ -27,7 +27,7 @@ if len(sys.argv) < 4:
     sys.exit(-1)
 
 main_mirror = "http://download.fedora.redhat.com/pub/fedora/linux/%s/%s/%s/repodata/"
-mirror_list = "http://mirrors.fedoraproject.org/mirrorlist?path=/pub/fedora/linux/%s/%s/%s/repodata"
+mirror_list = "http://mirrors.fedoraproject.org/mirrorlist?path=/pub/fedora/linux/%s/%s/%s/repodata&country=global"
 xml_file = "repomd.xml"
 
 directory = sys.argv[1]
@@ -41,13 +41,28 @@ except Exception, err:
     print "[ERROR] Cannot get info from URLs. Please check the parameters."
     sys.exit(-1)
 
-print "\nUsing:", main_mirror % (directory, version, architecture), "\n"
+results = [[],[]]
 for url in mirrors:
     if "#" in url or not url:
         continue
-    if urllib.urlopen(url + xml_file).read() == repomd:
-        print url, "[Good]"
-    else:
-        print url, "[Bad]"
+    print ".",
+    sys.stdout.flush()
+    try:
+        if urllib.urlopen(url + xml_file).read() == repomd:
+            results[0].append(url)
+        else:
+            results[1].append(url)
+    except Exception, err:
+        print "[ERROR]", url
+
+print "\nUsing:", main_mirror % (directory, version, architecture), "\n"
+print "[Good]"
+for url in results[0]:
+    print url
+print "\n[Bad]"
+for url in results[1]:
+    print url
+
 print "\n"
 sys.exit(0)
+
