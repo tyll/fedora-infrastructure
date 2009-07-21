@@ -21,6 +21,9 @@
 
 import sys
 import urllib
+from signal import signal, SIG_DFL
+
+signal(2, SIG_DFL)
 
 if len(sys.argv) < 4:
     print "Use: ./mirror_checker.py updates 11 x86_64"
@@ -41,28 +44,48 @@ except Exception, err:
     print "[ERROR] Cannot get info from URLs. Please check the parameters."
     sys.exit(-1)
 
-results = [[],[]]
+num_total = len(mirrors)
+num_good = 0
+num_bad = 0
+num_error = 0
+results = [[],[], []]
+
+print "\nChecking the repositories repodata !\n\nUsing:", main_mirror % (directory, version, architecture)
+
 for url in mirrors:
     if "#" in url or not url:
         continue
-    print ".",
+    print "\rTesting: %d/%d" % (num_good, num_total),
     sys.stdout.flush()
     try:
         if urllib.urlopen(url + xml_file).read() == repomd:
             results[0].append(url)
+            num_good += 1
         else:
             results[1].append(url)
+            num_bad += 1
     except Exception, err:
-        print "[ERROR]", url
+        results[2].append(url)
+        num_error += 1
 
-print "\nUsing:", main_mirror % (directory, version, architecture), "\n"
-print "[Good]"
-for url in results[0]:
-    print url
-print "\n[Bad]"
-for url in results[1]:
-    print url
+print """\n
+========================== Results ==========================
+\tGood\tBad\tError\tTotal\tPerc.Good
+\t%4d\t%3d\t%5d\t%5d\t%7.2f%%
+=============================================================
 
-print "\n"
+[Good Repositories]
+%s
+
+[Bad Repositories]
+%s
+
+[Errors]
+%s
+""" % (num_good, num_bad, num_error, num_total , float(num_good)*100/(num_good + num_bad),
+       "\n".join(results[0]),
+       "\n".join(results[1]),
+       "\n".join(results[2]),)
+
 sys.exit(0)
 
