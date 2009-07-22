@@ -38,7 +38,8 @@ version = sys.argv[2]
 architecture = sys.argv[3]
 
 try:
-    mirrors = urllib.urlopen(mirror_list % (directory, version, architecture)).read().split("\n")
+    mirrors = [ url for url in urllib.urlopen(mirror_list % (directory, version, architecture)).read().split("\n")
+                if url != "" and not "#" in url]
     repomd = urllib.urlopen(main_mirror % (directory, version, architecture) + xml_file).read()
 except Exception, err:
     print "[ERROR] Cannot get info from URLs. Please check the parameters."
@@ -48,6 +49,7 @@ num_total = len(mirrors)
 num_good = 0
 num_bad = 0
 num_error = 0
+
 results = [[],[], []]
 
 print "\nChecking the repositories repodata !\n\nUsing:", main_mirror % (directory, version, architecture)
