@@ -21,7 +21,7 @@ __VERSION__ = "0.2"
 __DATE__ = "21/07/2009"
 
 import sys
-import urllib
+import urllib2
 from signal import signal, SIG_DFL
 
 class CheckMirrors:
@@ -52,16 +52,16 @@ class CheckMirrors:
         temp = self.mirror_list_url % (self.directory, self.version, self.architecture)
         try:
             self.mirrors = [ url
-                             for url in urllib.urlopen(temp).read().split("\n")
+                             for url in urllib2.urlopen(temp).read().split("\n")
                              if url != "" and not "#" in url ]
-        except Exception, e:
-            print "[ERROR] Failed to get mirror list:", e
+        except Exception, error:
+            print "[ERROR] Failed to get mirror list:", error
             sys.exit(-1)
         temp = self.main_mirror % (self.directory, self.version, self.architecture)
         try:
-            self.repodata = urllib.urlopen(temp + self.xml_filename).read()
-        except Exception, e:
-            print "[ERROR] Failed to get XML repodata file:", e
+            self.repodata = urllib2.urlopen(temp + self.xml_filename).read()
+        except Exception, error:
+            print "[ERROR] Failed to get XML repodata file:", error
             sys.exit(-1)
         self.number_total_mirrors = len(self.mirrors)
         if self.number_total_mirrors == 0:
@@ -71,22 +71,20 @@ class CheckMirrors:
     def check_mirrors(self):
         """Method that verify, for each mirror, if its repomd.xml is equal of that on main.
         """
-        print "\nChecking the repositories repodata !\n\nUsing:", self.main_mirror % (self.directory, self.version, self.architecture)
-        counter = 0
+        print "\nChecking the repositories repodata !\n\nUsing:", self.main_mirror % (self.directory, self.version, self.architecture)            
         for url in self.mirrors:
-            print "\rTesting: %d/%d" % (counter , self.number_total_mirrors),
+            print "\rTesting: %d/%d" % (self.good_mirrors[1] , self.number_total_mirrors),
             sys.stdout.flush()
             try:
-                if urllib.urlopen(url + self.xml_filename).read() == self.repodata:
+                if urllib2.urlopen(url + self.xml_filename, timeout=10).read() == self.repodata:
                     self.good_mirrors[0].append(url)
                     self.good_mirrors[1] += 1
                 else:
                     self.bad_mirrors[0].append(url)
                     self.bad_mirrors[1] += 1
-            except Exception, error.msg:
-                self.error_mirrors[0].append(url + "\n[" + error.msg + "]")
+            except Exception, error:
+                self.error_mirrors[0].append(url + "\n[" + str(error) + "]")
                 self.error_mirrors[1] += 1
-            counter += 1
     
     def print_results(self):
         """Method that put the results on STDOUT.
@@ -123,6 +121,9 @@ class CheckMirrors:
     
 
 if __name__ == "__main__":
+    """Main Function.
+    If the programs was called as a script, this will be executed.
+    """
     signal(2, SIG_DFL)
     if len(sys.argv) == 4:
         CheckMirrors(sys.argv[1], sys.argv[2], sys.argv[3], ).run()
