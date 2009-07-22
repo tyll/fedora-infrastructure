@@ -71,9 +71,10 @@ class CheckMirrors:
     def check_mirrors(self):
         """Method that verify, for each mirror, if its repomd.xml is equal of that on main.
         """
-        print "\nChecking the repositories repodata !\n\nUsing:", self.main_mirror % (self.directory, self.version, self.architecture)            
+        print "\nChecking the repositories repodata !\n\nUsing:", self.main_mirror % (self.directory, self.version, self.architecture)
+        counter = 0
         for url in self.mirrors:
-            print "\rTesting: %d/%d" % (self.good_mirrors[1] , self.number_total_mirrors),
+            print "\rTesting: %d/%d" % (counter , self.number_total_mirrors),
             sys.stdout.flush()
             try:
                 if urllib.urlopen(url + self.xml_filename).read() == self.repodata:
@@ -82,9 +83,10 @@ class CheckMirrors:
                 else:
                     self.bad_mirrors[0].append(url)
                     self.bad_mirrors[1] += 1
-            except Exception, err:
-                self.error_mirrors[0].append(url + "\n[" + err + "]")
+            except Exception, error.msg:
+                self.error_mirrors[0].append(url + "\n[" + error.msg + "]")
                 self.error_mirrors[1] += 1
+            counter += 1
     
     def print_results(self):
         """Method that put the results on STDOUT.
@@ -121,9 +123,6 @@ class CheckMirrors:
     
 
 if __name__ == "__main__":
-    """Main Function.
-    If the programs was called as a script, this will be executed.
-    """
     signal(2, SIG_DFL)
     if len(sys.argv) == 4:
         CheckMirrors(sys.argv[1], sys.argv[2], sys.argv[3], ).run()
