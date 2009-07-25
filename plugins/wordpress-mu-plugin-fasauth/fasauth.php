@@ -8,27 +8,41 @@ Author: Fedora Infrastructure Team
 Author URI: http://fedoraproject.org/wiki/Infrastructure
 */
 
+// overriding wp_authenticate
+if(!function_exists('wp_authenticate')) :
+
 // let's disable a few things
 add_action('lost_password', 'disable_function');
 add_action('retrieve_password', 'disable_function');
 add_action('password_reset', 'disable_function');
 
 
-// overriding wp_authenticate
-if(!function_exists('wp_authenticate')) :
+/*
+ * Configuration Options
+ */
+function fasauth_config(){
 
+	$config['fas_json_url'] 		= 'http://publictest3.fedoraproject.org/accounts/json/person_by_username?tg_format=json';
+	$config['fas_redir_pass_reset'] = 'https://admin.fedoraproject.org/accounts/user/resetpass';
+	$config['fas_email_domain'] 	= 'fedoraproject.org';
+
+	return $config;
+}
+
+/*
+ * FAS Authentication
+ */ 
 function wp_authenticate($username, $password) {
+
+	$config = fasauth_config();
+
 	$username = sanitize_user($username);
 
-	if ($username == '' || $password == '') {
-		return new WP_Error('empty_username', __('<strong>ERROR</strong>: The username or password field is empty.'));
-	}
-
 	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, 'http://publictest3.fedoraproject.org/accounts/json/person_by_username?tg_format=json');
+	curl_setopt($ch, CURLOPT_URL, $config['fas_json_url']);
 	curl_setopt($ch, CURLOPT_POST, 1);
 	curl_setopt($ch, CURLOPT_USERAGENT, "Auth_FAS 0.9");
-	curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".$username."&user_name=".$username."&password=".$password."&login=Login");                            
+	curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".urlencode($username)."&user_name=".urlencode($username)."&password=".urlencode($password)."&login=Login");                            
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 	curl_setopt($ch, CURLOPT_VERBOSE, 1);
 	$fasuserdata = json_decode(curl_exec($ch), true);
@@ -37,13 +51,10 @@ function wp_authenticate($username, $password) {
 	// fas login successful
 	if (isset($fasuserdata["success"]) && $fasuserdata['person']['status'] == 'active') {
 
-		// check minimum group requirements
-		if (check_grp_req($fasuserdata) !== true) {
-			return new WP_Error('incorrect_password', __('<strong>Error</strong>: You do not meet minimum requirements to login.'));		
+		// check minimum requirements
+		if (check_login_requirement($fasuserdata) !== true) {
+			return new WP_Error('fasauth_min_requirement', __('<strong>Error</strong>: You do not meet minimum requirements to login.'));		
 		}
-		
-		
-		//echo "Min response: ".$min_req;
 
 		// let's check wp db for user
 		$user = get_userdatabylogin($username);
@@ -52,7 +63,7 @@ function wp_authenticate($username, $password) {
 		if ( !$user || ($user->user_login != $username) ) {			
 			$user_id = create_wp_user($username);
 			if (!$user_id) {
-				return new WP_Error('incorrect_password', __('<strong>Error</strong>: Unable to create account. Please contact the webmaster.'));		
+				return new WP_Error('fasauth_create_wp_user', __('<strong>Error</strong>: Unable to create account. Please contact the webmaster.'));		
 			}
 			
 			return new WP_User($user_id);
@@ -62,17 +73,20 @@ function wp_authenticate($username, $password) {
 		return new WP_User($user->ID);
 		
 	} else {
-		return new WP_Error('incorrect_password', __('<strong>Status</strong>: FAS Login NOT successful.'));
+		return new WP_Error('fasauth_wrong_credentials', __('<strong>Error</strong>: FAS login unsuccessful.'));
 	}
 }
 
-// creates user in wp db
+/*
+ * Creates user in wp db
+ */ 
 function create_wp_user($username) {
-	$password = '';
-	$email_domain = 'fedoraproject.org';
 
+	$config = fasauth_config();
+
+	$password = '';
 	require_once(WPINC . DIRECTORY_SEPARATOR . 'registration.php');
-	return wpmu_create_user($username, $password, $username.'@'.$email_domain);
+	return wpmu_create_user($username, $password, $username.'@'.$config['fas_email_domain']);
 }
 
 /*
@@ -81,26 +95,23 @@ function create_wp_user($username) {
 */
 function disable_function() {
 	die('Feature disabled.');
-	//return new WP_Error('disabled_feature', __('<strong>ERROR</strong>: This feature is disabled.'));
 }
 
 /*
-*  checks minimum group requirements
+*  checks minimum login requirements
 */
-function check_grp_req($user) {
+function check_login_requirement($user) {
 
 	$groups = $user["person"]["approved_memberships"];
-
 	//echo "Group: ". print_r($groups);
-	
+
 	// checking other group memberships
 	$match = 0;
-	$in_cla = false;
+	$in_cla_done = false;
 	for ($i = 0, $cnt = count($groups); $i < $cnt; $i++) {
-		
 		// user must be in cla
 		if ($groups[$i]["name"] == "cla_done") {
-			$in_cla = true;
+			$in_cla_done = true;
 		}
 
 		// keep count of anything non-cla
@@ -108,15 +119,14 @@ function check_grp_req($user) {
 			$match++;
 		}
 	}
-	
-	// yay, more than 1 non-cla group
-	if ($match > 0 and $in_cla) {
+
+	// yay! more than in 1 non-cla group
+	if ($match > 0 && $in_cla_done) {
 		return true;
 	}
-	
-	// if all else fails
-	return false;
 
+	// requirements not met
+	return false;
 }
 
 endif;
