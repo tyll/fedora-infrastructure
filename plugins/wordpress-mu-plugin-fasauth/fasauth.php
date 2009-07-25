@@ -22,7 +22,7 @@ add_action('password_reset', 'disable_function');
  */
 function fasauth_config(){
 
-	$config['fas_json_url'] 		= 'http://publictest3.fedoraproject.org/accounts/json/person_by_username?tg_format=json';
+	$config['fas_json_url'] 		= 'https://admin.fedoraproject.org/accounts/json/person_by_username?tg_format=json';
 	$config['fas_redir_pass_reset'] = 'https://admin.fedoraproject.org/accounts/user/resetpass';
 	$config['fas_email_domain'] 	= 'fedoraproject.org';
 
