@@ -44,7 +44,7 @@ function wp_authenticate($username, $password) {
 	curl_setopt($ch, CURLOPT_USERAGENT, "Auth_FAS 0.9");
 	curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".urlencode($username)."&user_name=".urlencode($username)."&password=".urlencode($password)."&login=Login");                            
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($ch, CURLOPT_VERBOSE, 1);
+	curl_setopt($ch, CURLOPT_VERBOSE, 0);
 	$fasuserdata = json_decode(curl_exec($ch), true);
 	curl_close ($ch);
 
