@@ -6,15 +6,15 @@ Description: FAS Authentication integration plugin
 Version: 0.1.0
 Author: Fedora Infrastructure Team
 Author URI: http://fedoraproject.org/wiki/Infrastructure
- */
+*/
 
 // overriding wp_authenticate
 if (!function_exists('wp_authenticate')) {
 
     // let's disable a few things
-    add_action('lost_password', 'disable_function');
-    add_action('retrieve_password', 'disable_function');
-    add_action('password_reset', 'disable_function');
+    add_action('lost_password', 'fas_password_redirect');
+    add_action('retrieve_password', 'fas_password_redirect');
+    add_action('password_reset', 'fas_password_redirect');
 
 
     /*
@@ -23,7 +23,7 @@ if (!function_exists('wp_authenticate')) {
     function fasauth_config(){
 
         $config['fas_json_url'] 		= 'https://admin.fedoraproject.org/accounts/json/person_by_username?tg_format=json';
-        $config['fas_redir_pass_reset'] = 'https://admin.fedoraproject.org/accounts/user/resetpass';
+        $config['fas_pass_reset_url'] 	= 'https://admin.fedoraproject.org/accounts/user/resetpass';
         $config['fas_email_domain'] 	= 'fedoraproject.org';
 
         return $config;
@@ -104,6 +104,15 @@ if (!function_exists('wp_authenticate')) {
     function disable_function() {
         die('Feature disabled.');
     }
+	
+    /*
+     * Used to redirect all lost password request to FAS.
+     */
+    function fas_password_redirect() {
+		$config = fasauth_config();
+        wp_redirect($config['fas_pass_reset_url'], 302);
+    }
+	
 
     /*
      *  checks minimum login requirements
