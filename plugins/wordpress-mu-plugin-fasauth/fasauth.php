@@ -57,7 +57,7 @@ if (!function_exists('wp_authenticate')) {
 
             // check minimum requirements
             if (check_login_requirement($fasuserdata) !== true) {
-                fwrite(STDERR, "FAS auth failed for $username: insufficient group membership\n");
+                error_log("FAS auth failed for $username: insufficient group membership", 0);
                 return new WP_Error('fasauth_min_requirement', __('<strong>Error</strong>: You do not meet minimum requirements to login.'));		
             }
 
@@ -71,16 +71,16 @@ if (!function_exists('wp_authenticate')) {
                     return new WP_Error('fasauth_create_wp_user', __('<strong>Error</strong>: Unable to create account. Please contact the webmaster.'));		
                 }
 
-                fwrite(STDERR, "FAS auth succeeded for $username\n");
+                error_log("FAS auth succeeded for $username", 0);
                 return new WP_User($user_id);
             }
 
             // all good, let go on
-            fwrite(STDERR, "FAS auth succeeded for $username\n");
+            error_log("FAS auth succeeded for $username", 0);
             return new WP_User($user->ID);
 
         } else {
-            fwrite(STDERR, "FAS auth failed for $username: incorrect username or password\n");
+            error_log("FAS auth failed for $username: incorrect username or password", 0);
             return new WP_Error('fasauth_wrong_credentials', __('<strong>Error</strong>: FAS login unsuccessful.'));
         }
     }

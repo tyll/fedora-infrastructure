@@ -28,7 +28,7 @@ class Auth_FAS extends AuthPlugin {
         curl_close ($ch);
 
         if (!isset($response["success"])) {
-            fwrite(STDERR, "FAS auth failed for $username: incorrect username or password\n");
+            error_log("FAS auth failed for $username: incorrect username or password", 0);
             return false;
         }
 
@@ -36,11 +36,11 @@ class Auth_FAS extends AuthPlugin {
 
         for ($i = 0, $cnt = count($groups); $i < $cnt; $i++) {
             if ($groups[$i]["name"] == "cla_done") {
-                fwrite(STDERR, "FAS auth succeeded for $username\n");
+                error_log("FAS auth succeeded for $username", 0);
                 return true;
             }
         }
-        fwrite(STDERR, "FAS auth failed for $username: insufficient group membership\n");
+        error_log("FAS auth failed for $username: insufficient group membership", 0);
         return false;
     }
 
