@@ -19,11 +19,12 @@ class Auth_FAS extends AuthPlugin {
         # plaintext passwords to show up in error logs.
         curl_setopt($ch, CURLOPT_VERBOSE, 0);
 
-        # The following two lines need to be enabled when using a test FAS
-        # with an invalid cert.  Otherwise they should be commented (or
-        # set to True) for security.
+        # The following two lines need to be uncommented when using a test FAS
+        # with an invalid cert.  Otherwise they should be commented (or set to
+        # True) for security.
         #curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         #curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+
         $response = json_decode(curl_exec($ch), true);
         curl_close ($ch);
 
