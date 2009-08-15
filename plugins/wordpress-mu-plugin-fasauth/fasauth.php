@@ -45,13 +45,13 @@ if (!function_exists('wp_authenticate')) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".urlencode($username)."&user_name=".urlencode($username)."&password=".urlencode($password)."&login=Login");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-        # WARNING: Never leave this on in production, as it will cause
-        # plaintext passwords to show up in error logs.
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
+        # WARNING: Never enable this line when running in production, as it will
+        # cause plaintext passwords to show up in error logs.
+        #curl_setopt($ch, CURLOPT_VERBOSE, TRUE);
 
         # The following two lines need to be uncommented when using a test FAS
-        # with an invalid cert.  Otherwise they should be commented (or set to
-        # True) for security.
+        # with an invalid cert.  Otherwise they should be commented out (or set
+        # to True) for security.
         #curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         #curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
 
