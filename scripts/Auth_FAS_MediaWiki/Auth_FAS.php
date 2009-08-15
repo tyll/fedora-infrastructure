@@ -21,7 +21,7 @@ class Auth_FAS extends AuthPlugin {
 
         # The following two lines need to be uncommented when using a test FAS
         # with an invalid cert.  Otherwise they should be commented out (or set
-        # to True) for security.
+        # to TRUE) for security.
         #curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         #curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
 
