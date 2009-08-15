@@ -11,7 +11,7 @@ class Auth_FAS extends AuthPlugin {
 
         curl_setopt($ch, CURLOPT_URL, 'https://admin.fedoraproject.org/accounts/json/person_by_username?tg_format=json');
         curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_USERAGENT, "Auth_FAS 0.9");
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mediawiki FAS Auth 0.9.1");
         curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".urlencode($username)."&user_name=".urlencode($username)."&password=".urlencode($password)."&login=Login");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
