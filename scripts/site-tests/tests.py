@@ -39,6 +39,6 @@ class Headers():
         print "\tApp time: %s" % headers['apptime'].split('=')[1]
         print "\tApp server: %s" % headers['appserver']
 
-      if headers['proxytime'].split('=')[1] > baseline:
-          print "\t%s Proxy Time slower than baseline %s > %s" % (WARNING, headers['proxytime'].split('=')[1], baseline)
+      if int(headers['proxytime'].split('=')[1]) > baseline:
+          print "\t%s Proxy Time longer than baseline %s > %s" % (WARNING, headers['proxytime'].split('=')[1], baseline)
           return (WARNING, headers['proxytime'].split('=')[1])
