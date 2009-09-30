@@ -7,7 +7,7 @@
 <div id="bottom">
   <div id="footer">
 <?php wp_footer(); ?>
-<p class="copy">Copyright © 2009 Red Hat, Inc. and others.  All Rights Reserved.  Please send any comments or corrections to the <a 
+<p class="copy">Copyright © 2009 Red Hat, Inc. and others.  Please send any comments or corrections to the <a 
 href="mailto:webmaster@fedoraproject.org">websites team</a>.</p>
 <p class="disclaimer">The Fedora Project is maintained and driven by the community and sponsored by Red Hat.  This is a community maintained site.  Red Hat is 
 not responsible for content.</p>
