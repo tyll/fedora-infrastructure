@@ -90,7 +90,7 @@ class CheckMirrors:
         """Method that put the results on STDOUT.
         """
         print """\n
-========================== Results ==========================
+=============== Valid Mirror Results ========================
 \tGood\tBad\tError\tTotal\tPerc.Good
 \t%4d\t%3d\t%5d\t%5d\t%7.2f%%
 =============================================================
