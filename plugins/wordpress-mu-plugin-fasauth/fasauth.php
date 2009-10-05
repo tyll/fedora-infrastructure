@@ -22,7 +22,7 @@ if (!function_exists('wp_authenticate')) {
      */
     function fasauth_config(){
 
-        $config['fas_json_url'] 		= 'https://admin.fedoraproject.org/accounts/json/person_by_username?tg_format=json';
+        $config['fas_json_url'] 	= 'https://admin.fedoraproject.org/accounts/json/person_by_username?tg_format=json';
         $config['fas_pass_reset_url'] 	= 'https://admin.fedoraproject.org/accounts/user/resetpass';
         $config['fas_email_domain'] 	= 'fedoraproject.org';
 
@@ -31,7 +31,7 @@ if (!function_exists('wp_authenticate')) {
 
     /*
      * FAS Authentication
-     */
+     */ 
     function wp_authenticate($username, $password) {
 
         $config = fasauth_config();
@@ -42,12 +42,12 @@ if (!function_exists('wp_authenticate')) {
         curl_setopt($ch, CURLOPT_URL, $config['fas_json_url']);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_USERAGENT, "Wordpress MU FAS Auth 0.1");
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".urlencode($username)."&user_name=".urlencode($username)."&password=".urlencode($password)."&login=Login");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "username=".urlencode($username)."&user_name=".urlencode($username)."&password=".urlencode($password)."&login=Login");                            
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-        # WARNING: Never enable this line when running in production, as it will
-        # cause plaintext passwords to show up in error logs.
-        #curl_setopt($ch, CURLOPT_VERBOSE, TRUE);
+        # WARNING: Never leave this on in production, as it will cause
+        # plaintext passwords to show up in error logs.
+        # curl_setopt($ch, CURLOPT_VERBOSE, 0);
 
         # The following two lines need to be uncommented when using a test FAS
         # with an invalid cert.  Otherwise they should be commented out (or set
@@ -64,17 +64,17 @@ if (!function_exists('wp_authenticate')) {
             // check minimum requirements
             if (check_login_requirement($fasuserdata) !== true) {
                 error_log("FAS auth failed for $username: insufficient group membership", 0);
-                return new WP_Error('fasauth_min_requirement', __('<strong>Error</strong>: You do not meet minimum requirements to login.'));
+                return new WP_Error('fasauth_min_requirement', __('<strong>Error</strong>: You do not meet minimum requirements to login.'));		
             }
 
             // let's check wp db for user
             $user = get_userdatabylogin($username);
 
             // user not found, let's create db entry for it
-            if ( !$user || ($user->user_login != $username) ) {
+            if ( !$user || ($user->user_login != $username) ) {			
                 $user_id = create_wp_user($username);
                 if (!$user_id) {
-                    return new WP_Error('fasauth_create_wp_user', __('<strong>Error</strong>: Unable to create account. Please contact the webmaster.'));
+                    return new WP_Error('fasauth_create_wp_user', __('<strong>Error</strong>: Unable to create account. Please contact the webmaster.'));		
                 }
 
                 error_log("FAS auth succeeded for $username", 0);
@@ -93,7 +93,7 @@ if (!function_exists('wp_authenticate')) {
 
     /*
      * Creates user in wp db
-     */
+     */ 
     function create_wp_user($username) {
 
         $config = fasauth_config();
@@ -110,15 +110,15 @@ if (!function_exists('wp_authenticate')) {
     function disable_function() {
         die('Feature disabled.');
     }
-
+	
     /*
      * Used to redirect all lost password request to FAS.
      */
     function fas_password_redirect() {
-		$config = fasauth_config();
+	$config = fasauth_config();
         wp_redirect($config['fas_pass_reset_url'], 302);
     }
-
+	
 
     /*
      *  checks minimum login requirements
