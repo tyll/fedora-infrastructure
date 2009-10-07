@@ -33,7 +33,6 @@ if (!function_exists('wp_authenticate')) {
      * FAS Authentication
      */ 
     function wp_authenticate($username, $password) {
-
         $config = fasauth_config();
 
         $username = sanitize_user($username);
@@ -86,8 +85,16 @@ if (!function_exists('wp_authenticate')) {
             return new WP_User($user->ID);
 
         } else {
-            error_log("FAS auth failed for $username: incorrect username or password", 0);
-            return new WP_Error('fasauth_wrong_credentials', __('<strong>Error</strong>: FAS login unsuccessful.'));
+	    if ($_POST == null) {
+		//Just visited the page, this stops the weird login thing. Not the best way around it, would be nice to find out why it is doing it, but this works.
+		return new WP_Error(); //wp_authenticate must return WP_User or WP_Error, so WP_Error is our option, with no values returns nothing. 
+	    } elseif ($username == null || $password == null) {
+	        //they forgot about, you know, the forms, and stuff.
+		return new WP_Error('fasauth_wrong_credentials', __('<strong>Error</strong>: Did you fill out the form?'));
+	    } else {
+	        error_log("FAS auth failed for $username: incorrect username or password", 0);
+	        return new WP_Error('fasauth_wrong_credentials', __('<strong>Error</strong>: FAS login unsuccessful.'));
+	    }
         }
     }
 
@@ -155,3 +162,4 @@ if (!function_exists('wp_authenticate')) {
 }
 
 ?>
+
