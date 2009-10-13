@@ -36,7 +36,6 @@ class SELinuxOverlord(Overlord):
         self.minion_glob = minions
 
     def get_selinux_status(self):
-        """ Get the SELinux status of all minions """
         results = self.command.run('/usr/sbin/getenforce')
 
         for minion, result in results.iteritems():
@@ -44,26 +43,21 @@ class SELinuxOverlord(Overlord):
                 print "[%s] Error: %s" % (minion, result)
             else:
                 self.selinux_status[result[stdout].strip()].append(minion)
+                self.selinux_minions[minion] = {}
 
         for key in self.selinux_status:
             self.selinux_status[key].sort()
 
         return self.selinux_status
 
-    def get_selinux_denials(self):
-        """ Return all AVC denials from this week """
-        if len(self.selinux_minions):
-            for minion, result in self.selinux_minions.iteritems():
-                yield minion, result
-        else:
-            results = self.command.run('ausearch -m AVC -ts this-week --input-logs')
-            for minion, result in results.iteritems():
-                self.selinux_minions[minion] = result
-                yield minion, result
+    def get_selinux_denials(self, minion):
+        overlord = Overlord(minion)
+        return overlord.command.run('ausearch -m AVC -ts this-week --input-logs')[minion]
 
     def dump_selinux_denials(self):
         """ Write out all SELinux denials for all minions """
-        for minion, result in self.get_selinux_denials():
+        for minion in self.selinux_minions:
+            result = self.get_selinux_denials(minion)
             if not result[status]:
                 out = file(minion, 'w')
                 out.write(result[stdout])
@@ -78,16 +72,17 @@ class SELinuxOverlord(Overlord):
                     print "[%s] Problem running ausearch: %r" % (minion, result)
 
     def get_enforced_denials(self):
-        """ Print all denials from SELinux-enforcing minions """
-        for minion, result in self.get_selinux_denials():
-            if minion not in self.selinux_status['Enforcing']:
-                continue
-            if not result[status]:
-                overlord = Overlord(minion)
-                audit2allow = overlord.command.run('audit2allow -la')
-                for m, r in audit2allow.iteritems():
-                    if r[stdout].strip():
-                        print "[%s]\n%s\n" % (m, r[stdout])
+        """ Get a quick list of SELinux denials on enforced hosts """
+        for minion in self.selinux_status['Enforcing']:
+            overlord = Overlord(minion)
+            audit2allow = overlord.command.run('audit2allow -la')
+            for m, r in audit2allow.iteritems():
+                if r[stdout].strip():
+                    print "[%s]\n%s\n" % (m, r[stdout])
+            audit2allow = overlord.command.run('audit2allow -l -i /var/log/messages')
+            for m, r in audit2allow.iteritems():
+                if r[stdout].strip():
+                    print "[%s]\n%s\n" % (m, r[stdout])
 
     def upgrade_policy(self):
         """ Update the SELinux policy across the given minions """
@@ -102,10 +97,10 @@ class SELinuxOverlord(Overlord):
         print "Upgrading SELinux policy..."
         job_id = async_client.command.run('yum -y update selinux*')
 
-        running = True
+        running = True          
 
-        while running:
-            time.sleep(20)
+        while running:  
+            time.sleep(20)                                                 
             return_code, results = async_client.job_status(job_id)
             if return_code == jobthing.JOB_ID_RUNNING:
                 continue
@@ -129,7 +124,7 @@ class SELinuxOverlord(Overlord):
 
 
 if __name__ == '__main__':
-    parser = OptionParser('usage: %prog [options] [minion(s)]')
+    parser = OptionParser('usage: %prog [options] [minion1[;minion2]]')
     parser.add_option('-s', '--status', action='store_true', dest='status',
                        help='Display the SELinux status of all minions')
     parser.add_option('-e', '--enforced-denials', action='store_true', 
@@ -143,9 +138,9 @@ if __name__ == '__main__':
     minions = len(args) > 0 and ';'.join(args) or '*'
     overlord = SELinuxOverlord(minions)
 
-    if opts.status or opts.enforced_denials:
-        print "Determining SELinux status on minions: %s" % minions
-        pprint(overlord.get_selinux_status())
+    print "Determining SELinux status on minions: %s" % minions
+    pprint(overlord.get_selinux_status())
+ 
     if opts.enforced_denials:
         print "Finding enforced SELinux denials..."
         overlord.get_enforced_denials()
