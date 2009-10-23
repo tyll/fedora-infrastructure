@@ -22,7 +22,7 @@
 <h2><?php _e('Meta:'); ?></h2>
 	<ul>
                 <li><a href="https://blogs.fedoraproject.org/wp/wp-signup.php">Create a Blog</a></li>
-		<li><a href="/wp/wp-admin">Control Panel</a></li>
+		<?php if (is_user_logged_in()) { echo "<li><a href="/wp/wp-admin">Control Panel</a></li>"; } ?>
 
 		<li><?php wp_loginout(); ?></li>
 		<li><a href="<?php bloginfo('rss2_url'); ?>" title="<?php _e('Syndicate this site using RSS'); ?>"><?php _e('<abbr title="Really Simple Syndication">RSS</abbr>'); ?></a></li>
