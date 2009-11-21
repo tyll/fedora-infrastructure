@@ -13,7 +13,12 @@ import tempfile
 import grp
 import syslog
 import smtplib
-from email.mine.text import MIMEText
+
+try:
+    from email.mime.text import MIMEText
+except ImportError:
+    from email import MIMEText
+
 try:
     import hashlib
     md5_constructor = hashlib.md5
