@@ -11,6 +11,8 @@ import sys
 import cgi
 import tempfile
 import grp
+import smtplib
+from email.mine.text import MIMEText
 try:
     import hashlib
     md5_constructor = hashlib.md5
@@ -51,6 +53,19 @@ def check_auth(username):
         pass
     return authenticated
 
+def send_email(name, md5, filename):
+    text='File %s has been uploaded to the lookaside cache with md5sum %s' % \
+        (filename, md5)
+    msg = MIMEText(text)
+    sender = 'nobody@fedoraproject.org'
+    recepients = [ '%s-owner@fedoraproject.org' % name, \
+        'fedora-extras-commits@redhat.com' ]
+    msg['Subject'] = 'File %s uploaded to lookaside cache' % filename
+    msg['From'] = sender
+    msg['To'] = recepients
+    s = smtplib.SMTP(host='bastion.fedoraproject.org')
+    s.sendmail(sender, recepients, msg.as_string())
+
 def main():
     os.umask(002)
 
@@ -80,7 +95,7 @@ def main():
     # In a submission, we don;t get a filename, just the file.
     if form.has_key('filename'):
         action = 'check'
-        filename = check_form(form, 'filename')   
+        filename = check_form(form, 'filename')
         filename = os.path.basename(filename)
         print >> sys.stderr, '[username=%s] Checking file status: NAME=%s FILENAME=%s MD5SUM=%s' % (username, name, filename, md5sum)
     else:
@@ -102,7 +117,7 @@ def main():
     if not os.path.isdir(cvs_dir):
         print >> sys.stderr, '[username=%s] Unknown module: %s' % (username, name)
         send_error('Module "%s" does not exist!' % name)
-        
+
     # try to see if we already have this file...
     dest_file = os.path.join(md5_dir, filename)
     if os.path.exists(dest_file):
@@ -152,6 +167,7 @@ def main():
     os.rename(tmpfile, dest_file)
     print >> sys.stderr, '[username=%s] Stored %s (%d bytes)' % (username, dest_file, filesize)
     print 'File %s size %d MD5 %s stored OK' % (filename, filesize, md5sum)
+    send_email(name, md5sum, filename)
 
 if __name__ == '__main__':
     main()
