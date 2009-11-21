@@ -11,6 +11,7 @@ import sys
 import cgi
 import tempfile
 import grp
+import syslog
 import smtplib
 from email.mine.text import MIMEText
 try:
@@ -53,18 +54,21 @@ def check_auth(username):
         pass
     return authenticated
 
-def send_email(name, md5, filename):
-    text='File %s has been uploaded to the lookaside cache with md5sum %s' % \
-        (filename, md5)
+def send_email(name, md5, filename, username):
+    text = 'File %s for package %s has been uploaded to the lookaside cache with md5sum %s by %s' % \
+        (filename, name, md5, username)
     msg = MIMEText(text)
     sender = 'nobody@fedoraproject.org'
     recepients = [ '%s-owner@fedoraproject.org' % name, \
         'fedora-extras-commits@redhat.com' ]
-    msg['Subject'] = 'File %s uploaded to lookaside cache' % filename
+    msg['Subject'] = 'File %s uploaded to lookaside cache by %s' % ( filename, username)
     msg['From'] = sender
     msg['To'] = recepients
-    s = smtplib.SMTP(host='bastion.fedoraproject.org')
-    s.sendmail(sender, recepients, msg.as_string())
+    try:
+        s = smtplib.SMTP(host='bastion.fedoraproject.org')
+        s.sendmail(sender, recepients, msg.as_string())
+    except:
+        syslog.syslog('sending mail for upload of %s failed!' % filename)
 
 def main():
     os.umask(002)
@@ -167,7 +171,7 @@ def main():
     os.rename(tmpfile, dest_file)
     print >> sys.stderr, '[username=%s] Stored %s (%d bytes)' % (username, dest_file, filesize)
     print 'File %s size %d MD5 %s stored OK' % (filename, filesize, md5sum)
-    send_email(name, md5sum, filename)
+    send_email(name, md5sum, filename, username)
 
 if __name__ == '__main__':
     main()
