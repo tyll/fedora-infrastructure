@@ -70,7 +70,7 @@ def send_email(name, md5, filename, username):
     msg['From'] = sender
     msg['To'] = recepients
     try:
-        s = smtplib.SMTP(host='bastion.fedoraproject.org')
+        s = smtplib.SMTP()
         s.sendmail(sender, recepients, msg.as_string())
     except:
         syslog.syslog('sending mail for upload of %s failed!' % filename)
