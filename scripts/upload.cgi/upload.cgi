@@ -148,7 +148,7 @@ def main():
 
     # grab a temporary filename and dump our file in there
     tempfile.tempdir = module_dir
-    tmpfile = tempfile.mkstemp(md5sum)
+    tmpfile = tempfile.mkstemp(md5sum)[1]
     tmpfd = open(tmpfile, 'w')
 
     # now read the whole file in
