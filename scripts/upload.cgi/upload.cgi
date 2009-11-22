@@ -64,14 +64,14 @@ def send_email(name, md5, filename, username):
         (filename, name, md5, username)
     msg = MIMEText(text)
     sender = 'nobody@fedoraproject.org'
-    recepients = [ '%s-owner@fedoraproject.org' % name, \
+    recipients = [ '%s-owner@fedoraproject.org' % name, \
         'fedora-extras-commits@redhat.com' ]
     msg['Subject'] = 'File %s uploaded to lookaside cache by %s' % ( filename, username)
     msg['From'] = sender
-    msg['To'] = recepients
+    msg['To'] = ', '.join(recipients)
     try:
         s = smtplib.SMTP()
-        s.sendmail(sender, recepients, msg.as_string())
+        s.sendmail(sender, recipients, msg.as_string())
     except:
         syslog.syslog('sending mail for upload of %s failed!' % filename)
 
