@@ -17,7 +17,7 @@ import smtplib
 try:
     from email.mime.text import MIMEText
 except ImportError:
-    from email import MIMEText
+    from email.MIMEText import MIMEText
 
 try:
     import hashlib
