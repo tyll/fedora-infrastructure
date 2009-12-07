@@ -174,6 +174,8 @@ def main():
         print >> sys.stderr, '[username=%s] mkdir %s' % (username, md5_dir)
 
     os.rename(tmpfile, dest_file)
+    os.chmod(dest_file, 0644)
+
     print >> sys.stderr, '[username=%s] Stored %s (%d bytes)' % (username, dest_file, filesize)
     print 'File %s size %d MD5 %s stored OK' % (filename, filesize, md5sum)
     send_email(name, md5sum, filename, username)
