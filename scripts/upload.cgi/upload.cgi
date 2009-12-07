@@ -11,9 +11,11 @@ import sys
 import cgi
 import tempfile
 import grp
+import pwd
 import syslog
 import smtplib
 
+from email import Header, Utils
 try:
     from email.mime.text import MIMEText
 except ImportError:
@@ -59,18 +61,35 @@ def check_auth(username):
         pass
     return authenticated
 
-def send_email(name, md5, filename, username):
-    text = 'File %s for package %s has been uploaded to the lookaside cache with md5sum %s by %s' % \
-        (filename, name, md5, username)
+def send_email(pkg, md5, filename, username):
+    text = """A file has been added to the lookaside cache for %(pkg)s:
+
+%(md5)s  %(filename)s""" % locals()
     msg = MIMEText(text)
-    sender = 'nobody@fedoraproject.org'
-    recipients = [ '%s-owner@fedoraproject.org' % name, \
-        'fedora-extras-commits@redhat.com' ]
-    msg['Subject'] = 'File %s uploaded to lookaside cache by %s' % ( filename, username)
+    try:
+        sender_name = pwd.getpwnam(username)[4]
+        sender_email = '%s@fedoraproject.org' % username
+    except KeyError:
+        sender_name = ''
+        sender_email = 'nobody@fedoraproject.org'
+        syslog.syslog('Unable to find account info for %s (uploading %s)' %
+                      (username, filename))
+    if sender_name:
+        try:
+            sender_name = unicode(sender_name, 'ascii')
+        except UnicodeDecodeError:
+            sender_name = Header.Header(sender_name, 'utf-8').encode()
+            msg.set_charset('utf-8')
+    sender = Utils.formataddr((sender_name, sender_email))
+    recipients = ['%s-owner@fedoraproject.org' % pkg,
+                  'fedora-extras-commits@redhat.com']
+    msg['Subject'] = 'File %s uploaded to lookaside cache by %s' % (
+            filename, username)
     msg['From'] = sender
     msg['To'] = ', '.join(recipients)
+    msg['X-Fedora-Upload'] = '%s, %s' % (pkg, filename)
     try:
-        s = smtplib.SMTP()
+        s = smtplib.SMTP('bastion')
         s.sendmail(sender, recipients, msg.as_string())
     except:
         syslog.syslog('sending mail for upload of %s failed!' % filename)
