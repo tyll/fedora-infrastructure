@@ -162,4 +162,3 @@ if (!function_exists('wp_authenticate')) {
 }
 
 ?>
-
