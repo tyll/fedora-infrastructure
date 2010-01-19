@@ -1,0 +1,29 @@
+DEFAULT vesamenu.c32
+MENU INCLUDE fedora.conf
+PROMPT 0
+MENU TITLE boot.fedoraproject.org
+
+LABEL bootlocal
+	MENU DEFAULT
+	MENU LABEL Local Boot
+	TEXT HELP
+		This will exit from the network boot menu and attempt
+		to boot from local media (hard disk, DVD, etc)
+	ENDTEXT
+	localboot 0
+
+menu include pxelinux.cfg/fedora_install.conf Install
+menu include pxelinux.cfg/fedora_rescue.conf Rescue
+menu include pxelinux.cfg/fedora_live.conf Live Images
+
+label hdt
+	menu label Hardware Detection Tool (hdt)
+	kernel hdt.c32
+	TEXT HELP
+		This is a quick and dirty Hardware Detection Tool
+		written by Erwan Velu with help from Pierre-Alexandre Meyer
+		and contributions from H. Peter Anvin all of the Syslinux
+		project.
+	ENDTEXT
+
+menu include pxelinux.cfg/bfo.conf About BFO
