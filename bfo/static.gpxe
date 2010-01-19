@@ -1,0 +1,11 @@
+#!gpxe
+echo Please provide, IP address, Netmask, Gateway and Router
+ifopen net0
+set net0/ip 10.0.2.15
+set net0/netmask 255.255.255.0
+set net0/gateway 10.0.2.2
+set net0/dns 10.0.2.3
+config net0
+set 209:string pxelinux.cfg/default
+set 210:string http://alt.fedoraproject.org/pub/alt/bfo/
+chain ${210:string}pxelinux.0
