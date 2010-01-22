@@ -102,9 +102,9 @@ class SELinuxOverlord(Overlord):
         while running:  
             time.sleep(20)                                                 
             return_code, results = async_client.job_status(job_id)
-            if return_code == jobthing.JOB_ID_RUNNING:
+            if return_code in (jobthing.JOB_ID_RUNNING, jobthing.JOB_ID_PARTIAL):
                 continue
-            elif return_code in (jobthing.JOB_ID_FINISHED, jobthing.JOB_ID_PARTIAL):
+            elif return_code == jobthing.JOB_ID_FINISHED:
                 for minion, result in results.items():
                     if result[0]:
                         print '[%s] Problem upgrading policy: %s' % (minion, result[1])
@@ -113,8 +113,7 @@ class SELinuxOverlord(Overlord):
                         print "[%s] selinux-policy successfully upgraded to %s" % (minion, ver)
                     else:
                         print "selinux-policy *not* upgraded on %s: %s" % (minion, result[1])
-                if return_code == jobthing.JOB_ID_FINISHED:
-                    running = False
+                running = False
             elif return_code == jobthing.JOB_ID_LOST_IN_SPACE:
                 print "Job %s lost in space: %s" % (job_id, results)
             else:
