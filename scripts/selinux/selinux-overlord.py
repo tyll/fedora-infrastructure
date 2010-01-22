@@ -95,7 +95,7 @@ class SELinuxOverlord(Overlord):
         async_client = Overlord(self.minion_glob, nforks=10, async=True)
 
         print "Upgrading SELinux policy..."
-        job_id = async_client.command.run('yum -y update selinux*')
+        job_id = async_client.command.run('yum -y update selinux\*')
 
         running = True          
 
