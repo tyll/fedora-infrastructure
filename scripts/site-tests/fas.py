@@ -88,6 +88,8 @@ for link in link_list:
     print OK
     headers.check(r._headers, 3000000)
 
+csrf=b.geturl().split('?')[1]
+
 print 'Editing Account:'
 r = b.follow_link(text_regex=r'^My Account$')
 r = b.follow_link(text_regex=r'edit')
@@ -98,7 +100,7 @@ print '\temail: %s' % b['email']
 print '\tTelephone: %s' % b['telephone']
 print '\tComments: %s' % b['comments']
 old_comments = b['comments']
-print '\tChanging Comments Field',
+print '\tChanging Comments Field:',
 b['comments'] = 'Changing for FAS test by %s' % username
 r = b.submit()
 print OK
@@ -121,3 +123,22 @@ r = b.submit()
 print OK
 headers.check(r._headers, 4000000)
 print "\t**This should have generated an email to you.  Please verify that"
+
+print 'CSRF:',
+try:
+  b.open('https://admin.fedoraproject.org/accounts/json/fas_client/user_data')
+except HTTPError, e:
+  r = b.open('https://admin.fedoraproject.org/accounts/json/fas_client/user_data?%s' % csrf)
+  print OK
+headers.check(r._headers, 4000000)
+
+print 'User Data (no memcached):',
+r = b.open('https://admin.fedoraproject.org/accounts/json/fas_client/user_data?%s&force_refresh=1' % csrf)
+print OK
+headers.check(r._headers, 4000000)
+print '%s - %s' % is_normal(r.readlines()[0].count('username'), 23000)
+
+print 'User Data (with memcached):',
+r = b.open('https://admin.fedoraproject.org/accounts/json/fas_client/user_data?%s' % csrf)
+print '%s - %s' % is_normal(r.readlines()[0].count('username'), 23000)
+headers.check(r._headers, 4000000)

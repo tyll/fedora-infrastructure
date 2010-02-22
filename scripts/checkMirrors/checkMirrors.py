@@ -59,6 +59,7 @@ class CheckMirrors:
             sys.exit(-1)
         temp = self.main_mirror % (self.directory, self.version, self.architecture)
         try:
+            print temp + self.xml_filename
             self.repodata = urllib2.urlopen(temp + self.xml_filename).read()
         except Exception, error:
             print "[ERROR] Failed to get XML repodata file:", error
