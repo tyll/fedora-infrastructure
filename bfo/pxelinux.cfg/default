@@ -14,16 +14,7 @@ LABEL bootlocal
 
 menu include pxelinux.cfg/fedora_install.conf Install
 menu include pxelinux.cfg/fedora_rescue.conf Rescue
-menu include pxelinux.cfg/fedora_live.conf Live Images
-
-label hdt
-	menu label Hardware Detection Tool (hdt)
-	kernel hdt.c32
-	TEXT HELP
-		This is a quick and dirty Hardware Detection Tool
-		written by Erwan Velu with help from Pierre-Alexandre Meyer
-		and contributions from H. Peter Anvin all of the Syslinux
-		project.
-	ENDTEXT
-
+menu include pxelinux.cfg/utilities.conf Utilities
 menu include pxelinux.cfg/bfo.conf About BFO
+
+menu include pxelinux.cfg/fedora_live.conf Experimental
