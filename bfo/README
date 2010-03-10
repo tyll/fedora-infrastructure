@@ -1,0 +1,11 @@
+To build the gpxe images, first download the source tarball from cvs.  Then:
+
+cd src
+cp /path/to/bfo/*gpxe ./
+sudo ln -s /usr/share/syslinux /usr/lib/syslinux
+make EMBEDDED_IMAGE=dhcp.gpxe,static.gpxe bin/gpxe.iso
+
+
+Note: Building new pxe images should really only be used to fix bugs in gpxe.
+BFO menus and things are downloaded with every boot so new pxe images don't
+need to be built for most changes.
