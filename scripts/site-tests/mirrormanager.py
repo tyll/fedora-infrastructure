@@ -155,19 +155,27 @@ headers.check(r._headers, 300000)
 
 print '\tgeoipv4 test:',
 r = b.open('http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-11&arch=i386&ip=64.34.163.94')
-if r.readlines()[0].count('country = US'):
+if r.readline().count('country = US'):
   print OK
+else:
+  print FAILED
 headers.check(r._headers, 300000)
 
 print '\tgeoipv6 test:',
 r = b.open('http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-11&arch=i386&ip=2610:28:200:1:216:3eff:fe62:9fdd')
-if r.readlines()[0].count('country = US'):
+if r.readline().count('country = US'):
   print OK
+else:
+  print FAILED
 headers.check(r._headers, 300000)
 
 print '\tASN test:',
 r = b.open('http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-11&arch=i386&ip=64.34.163.94')
-
-if r.readline().count('Using ASN 30099') and r.readline().count('serverbeach1'):
+tmp = r.readline()
+#if r.readline().count('Using ASN 30099') and r.readline().count('serverbeach1'):
+if tmp.count('Using ASN 30099') and tmp.count('serverbeach1'):
   print OK
+else:
+  print FAILED
+  print tmp
 headers.check(r._headers, 300000)
