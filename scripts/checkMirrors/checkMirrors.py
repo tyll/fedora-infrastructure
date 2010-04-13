@@ -37,6 +37,7 @@ class CheckMirrors:
             raise TypeError, "Parameters need to be strings."
         self.mirror_list_url = "http://mirrors.fedoraproject.org/mirrorlist?path=/pub/fedora/linux/%s/%s/%s/repodata&country=global"
         self.main_mirror = "http://download.fedora.redhat.com/pub/fedora/linux/%s/%s/%s/repodata/"
+        print self.main_mirror
         self.xml_filename = "repomd.xml"
         self.directory = directory
         self.version = version
