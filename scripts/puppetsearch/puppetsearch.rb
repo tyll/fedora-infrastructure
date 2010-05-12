@@ -3,13 +3,6 @@ require "yaml"
 require "puppet"
 require "optparse"
 
-def find_resource(catalog, type, query_file)
-  resource = catalog.resource(type, query_file)
-  unless resource.nil?
-    resource.file
-  end
-end
-
 options = {
   :types => [],
 }
@@ -53,10 +46,12 @@ end
 
 catalog = YAML::load_file(options[:yamlfile])
 
-ARGV.each do |search|
+ARGV.each do |search_title|
   options[:types].each do |type|
-    manifest = find_resource(catalog, type, search)
-    puts "#{type}[#{search}] defined in #{manifest}"
+    resource = catalog.resource(type, search_title)
+    unless resource.nil?
+      puts "#{resource} defined in #{resource.file}"
+    end
   end
 end
 
