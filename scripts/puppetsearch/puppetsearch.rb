@@ -40,10 +40,15 @@ if options[:yamlfile].nil?
 
   fqdn = Facter.value(:fqdn)
   if fqdn.nil?
-    abort "Error: Could not get FQDN"
+    abort "Error: Could not determine FQDN"
   end
 
-  options[:yamlfile] = "/var/lib/puppet/client_yaml/catalog/#{fqdn}.yaml"
+  client_yaml = Puppet[:clientyamldir]
+  if client_yaml.nil?
+      abort "Could not determine client YAML directory."
+  end
+
+  options[:yamlfile] = "#{client_yaml}/catalog/#{fqdn}.yaml"
 end
 
 catalog = YAML::load_file(options[:yamlfile])
