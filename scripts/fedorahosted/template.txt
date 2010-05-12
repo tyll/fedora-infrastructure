@@ -1,0 +1,11 @@
+Project name: myProject
+
+Project short summary: myProject does X and Y, for the purpose of Z.
+
+SCM choice (git/bzr/hg/svn): hg
+
+Project admin Fedora Account System account name: myAccountName
+
+Yes/No, would you like a Trac instance for your project?: yes
+
+Do you need a mailing list? If so, comma-separate a list of what you'd like them to be called. Otherwise, put "no": myProject-developers, myProject-commits
