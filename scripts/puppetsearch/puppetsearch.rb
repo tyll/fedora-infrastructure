@@ -1,25 +1,32 @@
 #!/usr/bin/ruby
-require "yaml"
 require "puppet"
 require "optparse"
 
 options = {
+  :node => Puppet[:certname],
   :types => [],
+  :source => :yaml,
 }
 
 OptionParser.new do |opts|
   opts.banner = "Usage: puppetsearch [options] title1 title2 ..."
 
-  opts.on("-y",
-          "--yamlfile YAMLFILE",
-          "Read catalog from YAMLFILE") do |yamlfile|
-    options[:yamlfile] = yamlfile
+  opts.on("-n",
+          "--node NODENAME",
+          "Search on node NODENAME") do |node|
+    options[:node] = node
   end
 
   opts.on("-t",
           "--types TYPES",
           "Comma-separated list of resource types to search for") do |types|
-    options[:types] = types.split(',')
+    options[:types] = types.split(",")
+  end
+
+  opts.on("-s",
+          "--source SOURCE",
+          "Catalog source (yaml, compiler, rest, etc.)") do |source|
+    options[:source] = source
   end
 end.parse!
 
@@ -28,23 +35,13 @@ if options[:types].empty?
   options[:types] << "File"
 end
 
-if options[:yamlfile].nil?
-  require "facter"
+Puppet[:catalog_terminus] = options[:source]
 
-  fqdn = Facter.value(:fqdn)
-  if fqdn.nil?
-    abort "Error: Could not determine FQDN"
-  end
+catalog = Puppet::Resource::Catalog.find(options[:node])
 
-  client_yaml = Puppet[:clientyamldir]
-  if client_yaml.nil?
-      abort "Could not determine client YAML directory."
-  end
-
-  options[:yamlfile] = "#{client_yaml}/catalog/#{fqdn}.yaml"
+if catalog.nil?
+    abort "Could not load catalog."
 end
-
-catalog = YAML::load_file(options[:yamlfile])
 
 ARGV.each do |search_title|
   options[:types].each do |type|
