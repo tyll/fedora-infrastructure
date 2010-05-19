@@ -17,8 +17,10 @@ my.setCacheDir()
 my.repos.disableRepo('*')
 my.add_enable_repo('f13',
    baseurls=['http://fedora.mirrors.tds.net/pub/fedora/development/13/source/SRPMS/'])
-my.add_enable_repo('f13-updates',
+my.add_enable_repo('f13-updates-testing',
    baseurls=['http://download.fedora.redhat.com/pub/fedora/linux/updates/testing/13/SRPMS/'])   
+my.add_enable_repo('f13-updates',
+   baseurls=['http://download.fedora.redhat.com/pub/fedora/linux/updates/13/SRPMS/'])
 my.add_enable_repo('f12', 
    baseurls=['http://fedora.mirrors.tds.net/pub/fedora/releases/12/Everything/source/SRPMS/'])
 my.add_enable_repo('f12-updates', 
@@ -53,6 +55,7 @@ def whoowns(package):
     return mainowner
 
 
+owners = []
 for pkg in sorted(my.pkgSack.returnNewestByNameArch()):
     if not pkg.repoid.startswith('f13'):
         f13pkgs = []
@@ -70,6 +73,9 @@ for pkg in sorted(my.pkgSack.returnNewestByNameArch()):
             f13all.reverse()
             if f13all[0].EVR != pkg.EVR:
                 owner = whoowns(pkg.name)
+                owners.append(owner)
                 print 'greater for f12: %s (%s)' % (pkg.name, owner)
                 print ' f12 = %s' % pkg
                 print ' f13 = %s' % f13all[0]
+
+print '%s@fedoraproject.org' % '@fedoraproject.org,'.join(sorted(set(owners)))
