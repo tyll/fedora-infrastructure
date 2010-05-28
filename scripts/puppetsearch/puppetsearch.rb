@@ -2,6 +2,8 @@
 require "puppet"
 require "optparse"
 
+Puppet.settings.parse
+
 options = {
   :node => Puppet[:certname],
   :types => [],
