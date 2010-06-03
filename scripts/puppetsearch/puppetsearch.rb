@@ -2,6 +2,10 @@
 require "puppet"
 require "optparse"
 
+# Note: This script requires puppet >= 0.25.5.
+
+Puppet.settings.parse
+
 options = {
   :node => Puppet[:certname],
   :types => [],
