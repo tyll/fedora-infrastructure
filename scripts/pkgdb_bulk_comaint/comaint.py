@@ -10,7 +10,15 @@ if __name__ == '__main__':
     username = sys.stdin.readline().strip()
     password = getpass.getpass('Password: ')
 
-    pkgdb = PackageDB(username=username, password=password)
+    # Note: in order not to send email:
+    # ssh bapp01
+    # /usr/sbin/puppetd --disable
+    # edit /etc/pkgdb.cfg and set:
+    #   mail.on = False
+    # /etc/init.d/httpd restart
+    #
+    # Then run this script on a host that can talk to bapp01.
+    pkgdb = PackageDB('http://bapp01/pkgdb/', username=username, password=password)
     collections = dict([(c[0]['id'], c[0]) for c in pkgdb.get_collection_list(eol=False)])
     pkgs = pkgdb.user_packages('mmaslano', acls=['owner', 'approveacls']).pkgs
 
