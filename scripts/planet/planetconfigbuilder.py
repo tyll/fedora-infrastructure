@@ -30,7 +30,7 @@ class Config(object):
         self.group = None
         self.output = sys.stdout
         self.output_fn = None
-        
+
         cp = ConfigParser()
         cp.read(fn)
         if cp.has_section('main'):
@@ -38,25 +38,25 @@ class Config(object):
                 self.base_config = cp.get('main', 'base_config')
             if cp.has_option('main', 'group'):
                 self.group = cp.get('main', 'group')
-                
+
             if cp.has_option('main', 'ignore_users'):
                 iu = cp.get('main', 'ignore_users')
-                iu = iu.replace(',',' ')    
+                iu = iu.replace(',',' ')
                 for user in iu.split(' '):
                     self.ignore_users.append(user)
             if cp.has_option('main', 'banned_stanzas'):
                 bs = cp.get('main', 'banned_stanzas')
-                bs = bs.replace(',',' ')    
+                bs = bs.replace(',',' ')
                 for banned in bs.split(' '):
                     self.banned_stanzas.append(banned)
             if cp.has_option('main', 'output'):
                 of = cp.get('main', 'output')
                 self.output = open(of, 'w')
                 self.output_fn = of
-                
+
 def error_print(msg):
     print >> sys.stderr, msg
-    
+
 class PlanetBuilderException(Exception):
     def __init__(self, value=None):
         Exception.__init__(self)
@@ -70,14 +70,14 @@ class PlanetBuilder(object):
     def __init__(self, config_file):
         self.entries = {}
         self.conf = Config(config_file)
-        
+
     def add(self, entry):
         if not entry.feed or not entry.name:
             raise PlanetBuilderException, "entry %s lacks feed or name" % entry
 
         if entry.feed in self.conf.banned_stanzas:
             raise PlanetBuilderException, "entry %s is in banned list" % entry
-        
+
         if self.entries.has_key(entry.feed):
             raise PlanetBuilderException, "entry %s already exists in list" % entry
 
@@ -89,7 +89,7 @@ class PlanetBuilder(object):
         if self.conf.base_config:
             bc = open(self.conf.base_config, 'r').read()
             result += bc
-        
+
         for e in self.entries.values():
             e_format = "# Origin: %s\n" % (e.origin)
             e_format += "[%s]\nname=%s\n" % (e.feed, e.name)
@@ -101,9 +101,9 @@ class PlanetBuilder(object):
         self.result = result
 
     def produce_output(self):
-        self.conf.output.write(self.result)        
+        self.conf.output.write(self.result)
         self.conf.output.close()
-                    
+
 class PlanetEntry(object):
 
     def __init__(self, origin, feed=None, name=None, face=None):
@@ -127,7 +127,7 @@ class PlanetFile(object):
         except ParsingError, e:
             error_print("Problem parsing %s - %s" % (filename, str(e)))
             return
-            
+
         for s in cp.sections():
             name = face = None
             if cp.has_option(s, 'name'):
@@ -136,23 +136,23 @@ class PlanetFile(object):
                 face = cp.get(s, 'face')
             e = PlanetEntry(filename, feed=s, name=name, face=face)
             self.entries.append(e)
-    
+
     def __iter__(self):
         return self.entries.__iter__()
-    
+
 def main(config_file='/etc/planetbuilder.conf'):
     pb = PlanetBuilder(config_file)
 
     fn = '.planet'
     if pb.conf.group:
         fn = '.planet.%s' % pb.conf.group
-        
+
     for (n, p, u, g, c, h, s) in pwd.getpwall():
         if u < 500:
             continue
         if n in pb.conf.ignore_users:
             continue
-        
+
         if os.path.exists(h + '/' + fn):
             for entry in PlanetFile(h + '/' + fn):
                 pb.add(entry)
@@ -167,7 +167,3 @@ if __name__ == "__main__":
         main(sys.argv[1])
     else:
         main()
-        
-        
-    
-    
