@@ -91,8 +91,9 @@ class PlanetBuilder(object):
             result += bc
 
         for e in self.entries.values():
+            fasname = os.path.split(os.path.split(e.origin)[0])[1]
             e_format = "# Origin: %s\n" % (e.origin)
-            e_format += "[%s]\nname=%s\n" % (e.feed, e.name)
+            e_format += "[%s]\nname=%s (%s)\n" % (e.feed, e.name, fasname)
             if e.face:
                 e_format += "face=%s\n" % (e.face)
             result += e_format
