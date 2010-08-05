@@ -16,11 +16,12 @@ my.arch.archlist.append('src')
 my.setCacheDir()
 my.repos.disableRepo('*')
 my.add_enable_repo('f13',
-   baseurls=['http://fedora.mirrors.tds.net/pub/fedora/development/13/source/SRPMS/'])
-my.add_enable_repo('f13-updates-testing',
-   baseurls=['http://download.fedora.redhat.com/pub/fedora/linux/updates/testing/13/SRPMS/'])   
+   baseurls=['http://download.fedora.redhat.com/pub/fedora/linux/releases/13/Everything/source/'])
+#my.add_enable_repo('f13-updates-testing',
+#   baseurls=['http://download.fedora.redhat.com/pub/fedora/linux/updates/testing/13/SRPMS/'])   
 my.add_enable_repo('f13-updates',
-   baseurls=['http://download.fedora.redhat.com/pub/fedora/linux/updates/13/SRPMS/'])
+   baseurls=['http://download.fedora.redhat.com/pub/fedora/linux/updates/13/SRPMS/',
+            'http://download.fedora.redhat.com/pub/fedora/linux/updates/testing/13/SRPMS/'])
 my.add_enable_repo('f12', 
    baseurls=['http://fedora.mirrors.tds.net/pub/fedora/releases/12/Everything/source/SRPMS/'])
 my.add_enable_repo('f12-updates', 
