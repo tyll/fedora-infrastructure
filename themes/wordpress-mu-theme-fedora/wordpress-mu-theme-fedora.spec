@@ -1,7 +1,7 @@
 Summary: Wordpress-MU Theme for Fedora
 URL: http://mu.wordpress.org/latest.tar.gz
 Name: wordpress-mu-theme-fedora
-Version: 1.0
+Version: 1.0.1
 Release: 1%{?dist}
 Group: Applications/Publishing
 License: GPLv2
