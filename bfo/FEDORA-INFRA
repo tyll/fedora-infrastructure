@@ -1,0 +1,14 @@
+Fedora infrastructure build's it's private BFO instance with this:
+
+http://www.rom-o-matic.net/gpxe/gpxe-1.0.1/contrib/rom-o-matic/build.php
+
+Place this in embedded script:
+==========   Snip ==========
+#!gpxe
+echo Please provide, IP address, Netmask, Gateway and Router
+ifopen net0
+config net0
+set 209:string pxelinux.cfg/default
+set 210:string http://mmcgrath.fedorapeople.org/gpxe/
+chain http://mmcgrath.fedorapeople.org/gpxe/pxelinux.0
+
