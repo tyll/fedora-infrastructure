@@ -1,4 +1,5 @@
 DEFAULT vesamenu.c32
+PXERetry 5
 MENU INCLUDE fedora.conf
 PROMPT 0
 MENU TITLE boot.fedoraproject.org
