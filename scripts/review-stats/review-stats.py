@@ -97,6 +97,20 @@ def yrmonth(str):
     month = int(str.split('-')[1])-1
     return m[month] + ' ' + year
 
+def seq_max_split(seq, max_entries):
+    """ Given a seq, split into a list of lists of length max_entries each. """
+    ret = []
+    num = len(seq)
+    seq = list(seq) # Trying to use a set/etc. here is bad
+    beg = 0
+    while num > max_entries:
+        end = beg + max_entries
+        ret.append(seq[beg:end])
+        beg += max_entries
+        num -= max_entries
+    ret.append(seq[beg:])
+    return ret
+
 def run_query(bz):
     querydata = {}
     bugdata = {}
@@ -127,9 +141,10 @@ def run_query(bz):
         alldeps |= bugdata[bug.bug_id]['depends']
 
     # Get the status of each dependency
-    for bug in filter(None, bz.getbugssimple(list(alldeps))):
-        if bug.bug_status == 'CLOSED':
-            closeddeps.add(str(bug.bug_id))
+    for i in seq_max_split(alldeps, 500):
+        for bug in filter(None, bz.getbugssimple(i)):
+            if bug.bug_status == 'CLOSED':
+                closeddeps.add(str(bug.bug_id))
 
     # Some special processing for those unflagged tickets
     def opendep(id): return id not in closeddeps
@@ -313,10 +328,8 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
     curmonth = ''
     curcount = 0
 
-    print 'processing new bugs'
     for i in bugs:
         if select_new(i, bugdata[i.bug_id]):
-            print i.bug_id
             rowclass = 'bz_row_even'
             if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
                 rowclass = 'bz_state_NEEDSPONSOR'
