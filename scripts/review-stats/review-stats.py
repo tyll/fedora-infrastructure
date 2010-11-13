@@ -152,6 +152,7 @@ def run_query(bz):
         if (bug.bug_status != 'CLOSED' and
             (string.lower(bug.status_whiteboard).find('notready') >= 0
                     or string.lower(bug.status_whiteboard).find('buildfails') >= 0
+                    or string.lower(bug.status_whiteboard).find('stalledsubmitter') >= 0
                     or LEGAL in bugdata[bug.bug_id]['blockedby']
                     or filter(opendep, bugdata[bug.bug_id]['depends']))):
             bugdata[bug.bug_id]['hidden'] = 1
