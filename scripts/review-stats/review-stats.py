@@ -29,13 +29,14 @@ url = 'https://bugzilla.redhat.com/xmlrpc.cgi'
 
 # Some magic bug numbers
 ACCEPT      = '163779'
-NEEDSPONSOR = '177841'
+FEATURE     = '654686'
 GUIDELINES  = '197974'
-SCITECH     = '505154'
 LEGAL       = '182235'
+NEEDSPONSOR = '177841'
+SCITECH     = '505154'
 
 # These will show up in a query but aren't actual review tickets
-trackers = set([ACCEPT, NEEDSPONSOR, GUIDELINES, SCITECH])
+trackers = set([ACCEPT, FEATURR, NEEDSPONSOR, GUIDELINES, SCITECH])
 
 def parse_commandline():
     usage = "usage: %prog [options] -d <dest_dir> -t <template_dir>"
@@ -334,6 +335,8 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
             rowclass = 'bz_row_even'
             if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
                 rowclass = 'bz_state_NEEDSPONSOR'
+            elif FEATURE in bugdata[i.bug_id]['blockedby']:
+                rowclass = 'bz_state_FEATURE'
             elif data['count'] % 2 == 1:
                 rowclass = 'bz_row_odd'
 
