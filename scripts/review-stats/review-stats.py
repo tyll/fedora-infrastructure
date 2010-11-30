@@ -36,7 +36,7 @@ NEEDSPONSOR = '177841'
 SCITECH     = '505154'
 
 # These will show up in a query but aren't actual review tickets
-trackers = set([ACCEPT, FEATURR, NEEDSPONSOR, GUIDELINES, SCITECH])
+trackers = set([ACCEPT, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
 
 def parse_commandline():
     usage = "usage: %prog [options] -d <dest_dir> -t <template_dir>"
