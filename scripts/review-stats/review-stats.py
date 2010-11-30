@@ -29,6 +29,7 @@ url = 'https://bugzilla.redhat.com/xmlrpc.cgi'
 
 # Some magic bug numbers
 ACCEPT      = '163779'
+BUNDLED     = '658489'
 FEATURE     = '654686'
 GUIDELINES  = '197974'
 LEGAL       = '182235'
@@ -36,7 +37,7 @@ NEEDSPONSOR = '177841'
 SCITECH     = '505154'
 
 # These will show up in a query but aren't actual review tickets
-trackers = set([ACCEPT, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
+trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
 
 def parse_commandline():
     usage = "usage: %prog [options] -d <dest_dir> -t <template_dir>"
@@ -154,6 +155,7 @@ def run_query(bz):
             (string.lower(bug.status_whiteboard).find('notready') >= 0
                     or string.lower(bug.status_whiteboard).find('buildfails') >= 0
                     or string.lower(bug.status_whiteboard).find('stalledsubmitter') >= 0
+                    or BUNDLED in bugdata[bug.bug_id]['blockedby']
                     or LEGAL in bugdata[bug.bug_id]['blockedby']
                     or filter(opendep, bugdata[bug.bug_id]['depends']))):
             bugdata[bug.bug_id]['hidden'] = 1
