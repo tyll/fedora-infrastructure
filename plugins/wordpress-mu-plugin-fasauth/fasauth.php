@@ -107,7 +107,7 @@ if (!function_exists('wp_authenticate')) {
 
         $password = '';
         require_once(WPINC . DIRECTORY_SEPARATOR . 'registration.php');
-        return wpmu_create_user($username, $password, $username.'@'.$config['fas_email_domain']);
+        return wp_create_user($username, $password, $username.'@'.$config['fas_email_domain']);
     }
 
     /*
