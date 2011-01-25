@@ -1,13 +1,13 @@
-Summary: Wordpress-MU Theme for Fedora
+Summary: Wordpress Theme for Fedora
 URL: http://mu.wordpress.org/latest.tar.gz
-Name: wordpress-mu-theme-fedora
-Version: 1.0.1
+Name: wordpress-theme-fedora
+Version: 1.0.2
 Release: 1%{?dist}
 Group: Applications/Publishing
 License: GPLv2
 Source0: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Requires: php >= 4.1.0, httpd, php-mysql, wordpress-mu
+Requires: php >= 4.1.0, httpd, php-mysql, wordpress
 BuildArch: noarch
 
 %description
@@ -15,7 +15,7 @@ This is a theme developed for the Fedora Project for
 blogs.fedoraproject.org
 
 %prep
-%setup -q -n wordpress-mu-theme-fedora
+%setup -q -n wordpress-theme-fedora
 
 %build
 
