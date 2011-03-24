@@ -3,9 +3,9 @@
 # Maximum file size in bytes
 MAX_SIZE=20000
 
+bad_file_found=0
 tmp=$(mktemp /tmp/git.update.XXXXXX)
 tree=$(mktemp /tmp/git.diff-tree.XXXXXX)
-bad_file_found=0
 zero="0000000000000000000000000000000000000000"
 
 git diff-tree -r "$2" "$3" > $tree
