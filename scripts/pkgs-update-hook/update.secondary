@@ -10,7 +10,11 @@ tmp=$(mktemp /tmp/git.update.XXXXXX)
 tree=$(mktemp /tmp/git.diff-tree.XXXXXX)
 zero="0000000000000000000000000000000000000000"
 
-git diff-tree -r "$old_rev" "$new_rev" > $tree
+if [[ "$old_rev" == "$zero" ]]; then
+    git diff-tree -r --root "$new_rev" | sed '1d' > $tree
+else
+    git diff-tree -r "$old_rev" "$new_rev" > $tree
+fi
 while read old_mode new_mode old_sha1 new_sha1 status name; do
     # skip lines showing parent commit
     [[ -z "$new_sha1" ]] && continue;
