@@ -6,6 +6,7 @@ MAX_SIZE=20000
 tmp=$(mktemp /tmp/git.update.XXXXXX)
 tree=$(mktemp /tmp/git.diff-tree.XXXXXX)
 bad_file_found=0
+zero="0000000000000000000000000000000000000000"
 
 git diff-tree -r "$2" "$3" > $tree
 while read old_mode new_mode old_sha1 new_sha1 status name; do
@@ -13,7 +14,7 @@ while read old_mode new_mode old_sha1 new_sha1 status name; do
     [[ -z "$new_sha1" ]] && continue;
 
     # skip deletions
-    [[ "$new_sha1" = "0000000000000000000000000000000000000000" ]] && continue
+    [[ "$new_sha1" = "$zero" ]] && continue
 
     # Skip files named *patch
     if [[ "$name" =~ [.]patch$ ]]; then
