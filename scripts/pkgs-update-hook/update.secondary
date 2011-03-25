@@ -53,7 +53,7 @@ while read old_mode new_mode old_sha1 new_sha1 status name; do
 
 done < $tree
 
-rm -f $tmp
+rm -f $tmp $tree
 if [[ $bad_file_found -eq 1 ]]; then
     echo "===================="
     echo "Your commit contained problematic files."
