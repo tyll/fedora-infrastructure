@@ -187,7 +187,8 @@ class Brancher(object):
                     (branch, pkgname))
 
         # Add the master to the branch
-        branch = '%s/master' % branch
+        # No longer add this after the new branching setup.
+        #branch = '%s/master' % branch
         # If branchFrom is None, this is an EOL release
         # If the directory already exists, no need to invoke mkbranch
         if branchFrom:
