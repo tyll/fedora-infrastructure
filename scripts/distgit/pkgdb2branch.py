@@ -1,7 +1,7 @@
 #!/usr/bin/python -t
 # Author: Toshio Kuratomi
 # Copyright: 2007-2008 Red Hat Software
-# License: GPLv2
+# License: GPLv2+
 # This needs a proper license and copyright here
 __version__ = '0.3'
 
