@@ -29,15 +29,15 @@ class Auth_FAS extends AuthPlugin {
         $response = json_decode(curl_exec($ch), true);
         curl_close ($ch);
 
-        if (!isset($response["success"])) {
+        if (!isset($response['person']['id'])) {
             error_log("FAS auth failed for $username: incorrect username or password", 0);
             return false;
         }
 
-        $groups = $response["person"]["approved_memberships"];
+        $groups = $response['memberships'];
 
         for ($i = 0, $cnt = count($groups); $i < $cnt; $i++) {
-            if ($groups[$i]["name"] == "cla_done") {
+            if ($groups[$i]["name"] == 'cla_done' && $response['person']['status'] == 'active') {
                 error_log("FAS auth succeeded for $username", 0);
                 return true;
             }
