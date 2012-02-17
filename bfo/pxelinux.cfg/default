@@ -15,6 +15,7 @@ LABEL bootlocal
 
 menu include pxelinux.cfg/fedora_install.conf Install
 menu include pxelinux.cfg/fedora_rescue.conf Rescue
+menu include pxelinux.cfg/fedora_prerelease.conf Prerelease
 menu include pxelinux.cfg/utilities.conf Utilities
 menu include pxelinux.cfg/bfo.conf About BFO
 
