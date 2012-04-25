@@ -15,6 +15,7 @@ VERSION = "2.5"
 import bugzilla
 import datetime
 import glob
+import logging
 import operator
 import os
 import string
@@ -38,6 +39,9 @@ SCITECH     = '505154'
 
 # These will show up in a query but aren't actual review tickets
 trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
+
+# So the bugzilla module has some way to complain
+logging.basicConfig()
 
 def parse_commandline():
     usage = "usage: %prog [options] -d <dest_dir> -t <template_dir>"
@@ -362,7 +366,7 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
 
 if __name__ == '__main__':
     options = parse_commandline()
-    bz = bugzilla.Bugzilla(url=options.url)
+    bz = bugzilla.Bugzilla(url=options.url, cookiefile=None)
     (bugs, bugdata) = run_query(bz)
 
     # Don't bother running this stuff until the query completes, since it fails
