@@ -159,6 +159,7 @@ def run_query(bz):
             (string.lower(bug.status_whiteboard).find('notready') >= 0
                     or string.lower(bug.status_whiteboard).find('buildfails') >= 0
                     or string.lower(bug.status_whiteboard).find('stalledsubmitter') >= 0
+                    or string.lower(bug.status_whiteboard).find('awaitingsubmitter') >= 0
                     or BUNDLED in bugdata[bug.bug_id]['blockedby']
                     or LEGAL in bugdata[bug.bug_id]['blockedby']
                     or filter(opendep, bugdata[bug.bug_id]['depends']))):
