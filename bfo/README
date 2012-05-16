@@ -1,11 +1,38 @@
-To build the gpxe images, first download the source tarball from cvs.  Then:
+boot.fedoraproject.org uses ipxe for it's boot images. 
+http://ipxe.org/
 
-cd src
-cp /path/to/bfo/*gpxe ./
-sudo ln -s /usr/share/syslinux /usr/lib/syslinux
-make EMBEDDED_IMAGE=dhcp.gpxe,static.gpxe bin/gpxe.iso
+From time to time we want to refresh the ipxe images used.
+This is to update for new hardware enablement or fix bugs. 
+Where possible, such updates should be done outside of any
+release freezes. 
 
+To rebuild the ipxe images, check out the latest upstream tree from git: 
 
-Note: Building new pxe images should really only be used to fix bugs in gpxe.
-BFO menus and things are downloaded with every boot so new pxe images don't
-need to be built for most changes.
+git clone git://git.ipxe.org/ipxe.git
+cd ipxe/src
+
+make a script0.ipxe there, containing: 
+
+--cut here--
+#!ipxe
+set 209:string pxelinux.cfg/default
+set 210:string http://dl.fedoraproject.org/pub/alt/bfo/
+dhcp || goto manualnet
+chain http://dl.fedoraproject.org/pub/alt/bfo/pxelinux.0
+:manualnet
+echo Please provide, IP address, Netmask, Gateway and Router
+ifopen net0
+config net0
+chain http://dl.fedoraproject.org/pub/alt/bfo/pxelinux.0
+--cut here--
+
+Then, make the images with: 
+
+make EMBED=script0.ipxe
+
+Copy the resulting binaries to secondary01:
+
+bin/ipxe.iso
+bin/ipxe.dsk
+bin/ipxe.lkrn
+bin/ipxe.usb
