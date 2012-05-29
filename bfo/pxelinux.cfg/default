@@ -1,8 +1,7 @@
 DEFAULT vesamenu.c32
-PXERetry 5
 MENU INCLUDE fedora.conf
 PROMPT 0
-MENU TITLE boot.fedoraproject.org
+MENU TITLE boot.fedoraproject.org (version 2012-05-14)
 
 LABEL bootlocal
 	MENU DEFAULT
@@ -11,12 +10,10 @@ LABEL bootlocal
 		This will exit from the network boot menu and attempt
 		to boot from local media (hard disk, DVD, etc)
 	ENDTEXT
-	localboot 0
+	localboot 0x80
 
 menu include pxelinux.cfg/fedora_install.conf Install
 menu include pxelinux.cfg/fedora_rescue.conf Rescue
 menu include pxelinux.cfg/fedora_prerelease.conf Prerelease
 menu include pxelinux.cfg/utilities.conf Utilities
 menu include pxelinux.cfg/bfo.conf About BFO
-
-menu include pxelinux.cfg/fedora_live.conf Experimental
