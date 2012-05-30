@@ -42,6 +42,7 @@ trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
 
 # So the bugzilla module has some way to complain
 logging.basicConfig()
+#logging.basicConfig(level=logging.DEBUG)
 
 def parse_commandline():
     usage = "usage: %prog [options] -d <dest_dir> -t <template_dir>"
@@ -127,6 +128,7 @@ def run_query(bz):
             'alias', 'assigned_to', 'reporter', 'bug_status', 'resolution',
             'component', 'blockedby', 'dependson', 'short_desc',
             'status_whiteboard', 'flag_types']
+    querydata['bug_status'] = ['NEW', 'ASSIGNED', 'MODIFIED']
     querydata['product'] = ['Fedora']
     querydata['component'] = ['Package Review']
 
