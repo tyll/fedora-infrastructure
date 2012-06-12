@@ -1,5 +1,5 @@
 #!/usr/bin/python -t
-VERSION = "2.5"
+VERSION = "2.6"
 
 # $Id: review-stats.py,v 1.12 2010/01/15 05:14:10 tibbs Exp $
 # Note: This script presently lives in internal git and external cvs.  External
@@ -21,6 +21,7 @@ import os
 import string
 import sys
 import tempfile
+import time
 from copy import deepcopy
 from genshi.template import TemplateLoader
 from optparse import OptionParser
@@ -370,7 +371,9 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
 if __name__ == '__main__':
     options = parse_commandline()
     bz = bugzilla.Bugzilla(url=options.url, cookiefile=None)
+    t = time.time()
     (bugs, bugdata) = run_query(bz)
+    querytime = time.time() - t
 
     # Don't bother running this stuff until the query completes, since it fails
     # so often.
@@ -380,6 +383,7 @@ if __name__ == '__main__':
     # The initial set of substitutions that's shared between the report functions
     subs = {
             'update': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
+            'querytime': querytime,
             'version': VERSION,
             'count': 0,
             'months': [],

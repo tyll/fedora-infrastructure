@@ -44,7 +44,7 @@ available:
 <tr><td style="white-space: nowrap"><a href="HIDDEN.html">Hidden tickets</a> ($hidden)</td>
     <td>Tickets which have been hidden for some reason.  These tickets either depend on other review tickets which have not yet been closed, or are unreviewable for some reason.  See <a href="https://fedoraproject.org/wiki/Package_Review_Process#Special_blocker_tickets">this page</a> for more information on the various states a review ticket can have.</td></tr>
 </table>
-Last updated: ${update}, version ${version}.
+Last updated: ${update}, query time: ${'{:0.3f}'.format(querytime)}, version: ${version}.
 <br/>
     <h2>Quick Review Search</h2>
     <form name="queryform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
