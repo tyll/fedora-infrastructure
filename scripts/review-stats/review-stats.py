@@ -270,6 +270,21 @@ def select_new(bug, bugd):
         return 1
     return 0
 
+def rowclass_plain(count):
+    rowclass = 'bz_row_even'
+    if count % 2 == 1:
+        rowclass = 'bz_row_odd'
+
+# Yes, the even/odd classes look backwards, but it looks better this way
+def rowclass_with_sponsor(bug, count):
+    rowclass = 'bz_row_odd'
+    if NEEDSPONSOR in bug['blockedby']:
+        rowclass = 'bz_state_NEEDSPONSOR'
+    elif FEATURE in bug['blockedby']:
+        rowclass = 'bz_state_FEATURE'
+    elif count % 2 == 1:
+        rowclass = 'bz_row_even'
+    return rowclass
 
 # The data from a standard row in a bug list
 def std_row(bug, rowclass):
@@ -291,12 +306,7 @@ def report_hidden(bugs, bugdata, loader, tmpdir, subs):
 
     for i in bugs:
         if select_hidden(i, bugdata[i.bug_id]):
-            rowclass = 'bz_row_even'
-            if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
-                rowclass = 'bz_state_NEEDSPONSOR'
-            elif data['count'] % 2 == 1:
-                rowclass = 'bz_row_odd'
-
+            rowclass = rowclass_with_sponsor(bugdata[i.bug_id], data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
 
@@ -311,10 +321,7 @@ def report_review(bugs, bugdata, loader, tmpdir, subs):
 
     for i in bugs:
         if select_review(i, bugdata[i.bug_id]):
-            rowclass = 'bz_row_even'
-            if data['count'] % 2 == 1:
-                rowclass = 'bz_row_odd'
-
+            rowclass = rowclass_plain(data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
 
@@ -329,10 +336,7 @@ def report_trivial(bugs, bugdata, loader, tmpdir, subs):
 
     for i in bugs:
         if select_trivial(i, bugdata[i.bug_id]):
-            rowclass = 'bz_row_even'
-            if data['count'] % 2 == 1:
-                rowclass = 'bz_row_odd'
-
+            rowclass = rowclass_plain(data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
 
@@ -345,15 +349,9 @@ def report_merge(bugs, bugdata, loader, tmpdir, subs):
     data['description'] = 'This page lists all merge review tickets which need reviewers'
     data['title'] = 'Merge reviews'
 
-    count = 0
-    curmonth = ''
-
     for i in bugs:
         if select_merge(i, bugdata[i.bug_id]):
-            rowclass = 'bz_row_even'
-            if data['count'] % 2 == 1:
-                rowclass = 'bz_row_odd'
-
+            rowclass = rowclass_plain(data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
 
@@ -376,9 +374,7 @@ def report_needsponsor(bugs, bugdata, loader, tmpdir, subs):
     selected.sort(key=reporter)
 
     for i in selected:
-        rowclass = 'bz_row_even'
-        if data['count'] % 2 == 1:
-            rowclass = 'bz_row_odd'
+        rowclass = rowclass_plain(data['count'])
 
         if curreporter != reporter(i):
             data['months'].append({'month': reporter(i), 'bugs': []})
@@ -410,14 +406,7 @@ def report_epel(bugs, bugdata, loader, tmpdir, subs):
                 curmonth = yrmonth(i.opendate)
                 curcount = 0
 
-            rowclass = 'bz_row_odd'
-            if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
-                rowclass = 'bz_state_NEEDSPONSOR'
-            elif FEATURE in bugdata[i.bug_id]['blockedby']:
-                rowclass = 'bz_state_FEATURE'
-            elif curcount % 2 == 1:
-                rowclass = 'bz_row_even'
-
+            rowclass = rowclass_with_sponsor(bugdata[i.bug_id], curcount)
             data['months'][-1]['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
             curcount +=1
@@ -446,14 +435,7 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
                 curmonth = yrmonth(i.opendate)
                 curcount = 0
 
-            rowclass = 'bz_row_odd'
-            if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
-                rowclass = 'bz_state_NEEDSPONSOR'
-            elif FEATURE in bugdata[i.bug_id]['blockedby']:
-                rowclass = 'bz_state_FEATURE'
-            elif curcount % 2 == 1:
-                rowclass = 'bz_row_even'
-
+            rowclass = rowclass_with_sponsor(bugdata[i.bug_id], curcount)
             data['months'][-1]['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
             curcount +=1
