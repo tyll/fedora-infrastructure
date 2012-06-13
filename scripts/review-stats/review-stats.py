@@ -171,8 +171,7 @@ def run_query(bz):
     # Now process the other three flags; not much special processing for them
     querydata['type0-0-0'] = 'equals'
 #    for i in ['-', '+', '?']:
-    for i in []: #['-', '?']:
-        print "foo"
+    for i in ['-', '?']:
         querydata['value0-0-0'] = 'fedora-review' + i
         b1 = bz.query(querydata)
         for bug in b1:
