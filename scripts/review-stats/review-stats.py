@@ -234,6 +234,11 @@ def select_needsponsor(bug, bugd):
         return 1
     return 0
 
+def select_review(bug, bugd):
+    if bugd['reviewflag'] == '?':
+        return 1
+    return 0
+
 def select_trivial(bug, bugd):
     if (bugd['reviewflag'] == ' '
             and bug.bug_status != 'CLOSED'
@@ -296,6 +301,24 @@ def report_hidden(bugs, bugdata, loader, tmpdir, subs):
             data['count'] +=1
 
     write_html(loader, 'plain.html', data, tmpdir, 'HIDDEN.html')
+
+    return data['count']
+
+def report_review(bugs, bugdata, loader, tmpdir, subs):
+    data = deepcopy(subs)
+    data['description'] = 'This page lists tickets currently under review'
+    data['title'] = 'Tickets under review'
+
+    for i in bugs:
+        if select_review(i, bugdata[i.bug_id]):
+            rowclass = 'bz_row_even'
+            if data['count'] % 2 == 1:
+                rowclass = 'bz_row_odd'
+
+            data['bugs'].append(std_row(i, rowclass))
+            data['count'] +=1
+
+    write_html(loader, 'plain.html', data, tmpdir, 'REVIEW.html')
 
     return data['count']
 
@@ -465,11 +488,14 @@ if __name__ == '__main__':
             }
     args = {'bugs':bugs, 'bugdata':bugdata, 'loader':loader, 'tmpdir':tmpdir, 'subs':subs}
 
+    t = time.time()
+
     subs['new'] =         report_new(**args)
     subs['epel'] =        report_epel(**args)
     subs['hidden'] =      report_hidden(**args)
     subs['merge'] =       report_merge(**args)
     subs['needsponsor'] = report_needsponsor(**args)
+    subs['review'] =      report_review(**args)
     subs['trivial'] =     report_trivial(**args)
 #    data['accepted_closed'] = report_accepted_closed(bugs, bugdata, loader, tmpdir)
 #    data['accepted_open'] = report_accepted_open(bugs, bugdata, loader, tmpdir)
@@ -477,6 +503,7 @@ if __name__ == '__main__':
 #    data['rejected_open'] = report_rejected_open(bugs, bugdata, loader, tmpdir)
 #    data['review_closed'] = report_review_closed(bugs, bugdata, loader, tmpdir)
 #    data['review_open'] = report_review_open(bugs, bugdata, loader, tmpdir)
+    subs['outputtime'] = time.time() - t
     write_html(loader, 'index.html', subs, tmpdir, 'index.html')
 
     for filename in glob.glob(os.path.join(tmpdir, '*')):
