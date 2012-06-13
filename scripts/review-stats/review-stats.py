@@ -130,7 +130,7 @@ def run_query(bz):
             'component', 'blockedby', 'dependson', 'short_desc',
             'status_whiteboard', 'flag_types']
     querydata['bug_status'] = ['NEW', 'ASSIGNED', 'MODIFIED']
-    querydata['product'] = ['Fedora']
+    querydata['product'] = ['Fedora', 'Fedora EPEL']
     querydata['component'] = ['Package Review']
 
     # Look up tickets with no flag set
@@ -234,10 +234,23 @@ def select_needsponsor(bug, bugd):
         return 1
     return 0
 
+def select_epel(bug, bugd):
+    '''If someone assigns themself to a ticket, it's theirs regardless of
+    whether they set the flag properly or not.'''
+    if (bugd['reviewflag'] == ' '
+            and bug.product == 'Fedora EPEL'
+            and bug.bug_status != 'CLOSED'
+            and bugd['hidden'] == 0
+            and nobody(bug.assigned_to) == '(Nobody)'
+            and bug.short_desc.find('Merge Review') < 0):
+        return 1
+    return 0
+
 def select_new(bug, bugd):
     '''If someone assigns themself to a ticket, it's theirs regardless of
     whether they set the flag properly or not.'''
     if (bugd['reviewflag'] == ' '
+            and bug.product == 'Fedora'
             and bug.bug_status != 'CLOSED'
             and bugd['hidden'] == 0
             and nobody(bug.assigned_to) == '(Nobody)'
@@ -332,9 +345,45 @@ def report_needsponsor(bugs, bugdata, loader, tmpdir, subs):
 
     return data['count']
 
+def report_epel(bugs, bugdata, loader, tmpdir, subs):
+    data = deepcopy(subs)
+    data['description'] = 'This page lists new, reviewable EPEL package review tickets.  Tickets colored green require a sponsor.'
+    data['title'] = 'New EPEL package review tickets'
+
+    curmonth = ''
+    curcount = 0
+
+    for i in bugs:
+        if select_epel(i, bugdata[i.bug_id]):
+            if curmonth != yrmonth(i.opendate):
+                if curcount > 0:
+                    data['months'][-1]['month'] += (" (%d)" % curcount)
+                data['months'].append({'month': yrmonth(i.opendate), 'bugs': []})
+                curmonth = yrmonth(i.opendate)
+                curcount = 0
+
+            rowclass = 'bz_row_odd'
+            if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
+                rowclass = 'bz_state_NEEDSPONSOR'
+            elif FEATURE in bugdata[i.bug_id]['blockedby']:
+                rowclass = 'bz_state_FEATURE'
+            elif curcount % 2 == 1:
+                rowclass = 'bz_row_even'
+
+            data['months'][-1]['bugs'].append(std_row(i, rowclass))
+            data['count'] +=1
+            curcount +=1
+
+    if curcount > 0:
+        data['months'][-1]['month'] += (" (%d)" % curcount)
+
+    write_html(loader, 'bymonth.html', data, tmpdir, 'EPEL.html')
+
+    return data['count']
+
 def report_new(bugs, bugdata, loader, tmpdir, subs):
     data = deepcopy(subs)
-    data['description'] = 'This page lists new, reviewable package review tickets (excluding merge reviews).  Tickets colored green require a sponsor.'
+    data['description'] = 'This page lists new, reviewable Fedora package review tickets (excluding merge reviews).  Tickets colored green require a sponsor.'
     data['title'] = 'New package review tickets'
 
     curmonth = ''
@@ -342,20 +391,20 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
 
     for i in bugs:
         if select_new(i, bugdata[i.bug_id]):
-            rowclass = 'bz_row_even'
-            if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
-                rowclass = 'bz_state_NEEDSPONSOR'
-            elif FEATURE in bugdata[i.bug_id]['blockedby']:
-                rowclass = 'bz_state_FEATURE'
-            elif data['count'] % 2 == 1:
-                rowclass = 'bz_row_odd'
-
             if curmonth != yrmonth(i.opendate):
                 if curcount > 0:
                     data['months'][-1]['month'] += (" (%d)" % curcount)
                 data['months'].append({'month': yrmonth(i.opendate), 'bugs': []})
                 curmonth = yrmonth(i.opendate)
                 curcount = 0
+
+            rowclass = 'bz_row_odd'
+            if NEEDSPONSOR in bugdata[i.bug_id]['blockedby']:
+                rowclass = 'bz_state_NEEDSPONSOR'
+            elif FEATURE in bugdata[i.bug_id]['blockedby']:
+                rowclass = 'bz_state_FEATURE'
+            elif curcount % 2 == 1:
+                rowclass = 'bz_row_even'
 
             data['months'][-1]['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
@@ -392,6 +441,7 @@ if __name__ == '__main__':
     args = {'bugs':bugs, 'bugdata':bugdata, 'loader':loader, 'tmpdir':tmpdir, 'subs':subs}
 
     subs['new'] =         report_new(**args)
+    subs['epel'] =        report_epel(**args)
     subs['merge'] =       report_merge(**args)
     subs['needsponsor'] = report_needsponsor(**args)
     subs['hidden'] =      report_hidden(**args)
