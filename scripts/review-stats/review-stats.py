@@ -171,7 +171,8 @@ def run_query(bz):
     # Now process the other three flags; not much special processing for them
     querydata['type0-0-0'] = 'equals'
 #    for i in ['-', '+', '?']:
-    for i in ['-', '?']:
+    for i in []: #['-', '?']:
+        print "foo"
         querydata['value0-0-0'] = 'fedora-review' + i
         b1 = bz.query(querydata)
         for bug in b1:
@@ -234,6 +235,13 @@ def select_needsponsor(bug, bugd):
         return 1
     return 0
 
+def select_trivial(bug, bugd):
+    if (bugd['reviewflag'] == ' '
+            and bug.bug_status != 'CLOSED'
+            and string.lower(bug.status_whiteboard).find('trivial') >= 0):
+        return 1
+    return 0
+
 def select_epel(bug, bugd):
     '''If someone assigns themself to a ticket, it's theirs regardless of
     whether they set the flag properly or not.'''
@@ -289,6 +297,24 @@ def report_hidden(bugs, bugdata, loader, tmpdir, subs):
             data['count'] +=1
 
     write_html(loader, 'plain.html', data, tmpdir, 'HIDDEN.html')
+
+    return data['count']
+
+def report_trivial(bugs, bugdata, loader, tmpdir, subs):
+    data = deepcopy(subs)
+    data['description'] = 'This page lists review tickets marked as trivial'
+    data['title'] = 'Trivial reviews'
+
+    for i in bugs:
+        if select_trivial(i, bugdata[i.bug_id]):
+            rowclass = 'bz_row_even'
+            if data['count'] % 2 == 1:
+                rowclass = 'bz_row_odd'
+
+            data['bugs'].append(std_row(i, rowclass))
+            data['count'] +=1
+
+    write_html(loader, 'plain.html', data, tmpdir, 'TRIVIAL.html')
 
     return data['count']
 
@@ -442,9 +468,10 @@ if __name__ == '__main__':
 
     subs['new'] =         report_new(**args)
     subs['epel'] =        report_epel(**args)
+    subs['hidden'] =      report_hidden(**args)
     subs['merge'] =       report_merge(**args)
     subs['needsponsor'] = report_needsponsor(**args)
-    subs['hidden'] =      report_hidden(**args)
+    subs['trivial'] =     report_trivial(**args)
 #    data['accepted_closed'] = report_accepted_closed(bugs, bugdata, loader, tmpdir)
 #    data['accepted_open'] = report_accepted_open(bugs, bugdata, loader, tmpdir)
 #    data['rejected_closed'] = report_rejected_closed(bugs, bugdata, loader, tmpdir)
