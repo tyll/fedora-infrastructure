@@ -7,6 +7,8 @@
 # This file is maintained within puppet?
 # All local changes will be lost.
 
+# License: GPLv2 (see https://fedorahosted.org/fedora-infrastructure/ticket/3351#comment:2)
+
 
 # Figure out the environment we're running in
 GITROOT=/srv/git/rpms
