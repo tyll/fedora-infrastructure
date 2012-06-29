@@ -232,6 +232,7 @@ def select_needsponsor(bug, bugd):
             and bug.bug_status != 'CLOSED'
             and nobody(bug.assigned_to) == '(Nobody)'
             and string.lower(bug.status_whiteboard).find('buildfails') < 0
+            and string.lower(bug.status_whiteboard).find('notready') < 0
             and string.lower(bug.status_whiteboard).find('stalledsubmitter') < 0
             and string.lower(bug.status_whiteboard).find('awaitingsubmitter') < 0):
         return 1
