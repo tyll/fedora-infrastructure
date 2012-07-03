@@ -229,6 +229,7 @@ def select_merge(bug, bugd):
 def select_needsponsor(bug, bugd):
     if (bugd['reviewflag'] == ' '
             and NEEDSPONSOR in bugd['blockedby']
+            and LEGAL not in bugd['blockedby']
             and bug.bug_status != 'CLOSED'
             and nobody(bug.assigned_to) == '(Nobody)'
             and string.lower(bug.status_whiteboard).find('buildfails') < 0
