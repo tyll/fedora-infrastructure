@@ -1,5 +1,5 @@
 #!/usr/bin/python -t
-VERSION = "2.6"
+VERSION = "3.0"
 
 # $Id: review-stats.py,v 1.12 2010/01/15 05:14:10 tibbs Exp $
 # Note: This script presently lives in internal git and external cvs.  External
@@ -22,21 +22,23 @@ import string
 import sys
 import tempfile
 import time
+from configobj import ConfigObj, flatten_errors
 from copy import deepcopy
 from genshi.template import TemplateLoader
 from optparse import OptionParser
+from validate import Validator
 
 # Red Hat's bugzilla
 url = 'https://bugzilla.redhat.com/xmlrpc.cgi'
 
 # Some magic bug numbers
-ACCEPT      = '163779'
-BUNDLED     = '658489'
-FEATURE     = '654686'
-GUIDELINES  = '197974'
-LEGAL       = '182235'
-NEEDSPONSOR = '177841'
-SCITECH     = '505154'
+ACCEPT      = 163779
+BUNDLED     = 658489
+FEATURE     = 654686
+GUIDELINES  = 197974
+LEGAL       = 182235
+NEEDSPONSOR = 177841
+SCITECH     = 505154
 
 # These will show up in a query but aren't actual review tickets
 trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
@@ -46,17 +48,16 @@ logging.basicConfig()
 #logging.basicConfig(level=logging.DEBUG)
 
 def parse_commandline():
-    usage = "usage: %prog [options] -d <dest_dir> -t <template_dir>"
+    usage = "usage: %prog [options] -c <bugzilla_config> -d <dest_dir> -t <template_dir>"
     parser = OptionParser(usage)
+    parser.add_option("-c", "--config", dest="configfile",
+              help="configuration file name")
     parser.add_option("-d", "--destination", dest="dirname",
               help="destination directory")
     parser.add_option("-f", "--frequency", dest="frequency",
               help="update frequency", default="60")
     parser.add_option("-t", "--templatedir", dest="templdir",
               help="template directory")
-    parser.add_option("-u", "--url", dest="url",
-              help="bugzilla URL to query",
-              default=url)
 
     (options, args) = parser.parse_args()
     tst = str(options.dirname)
@@ -72,6 +73,30 @@ def parse_commandline():
 
     return options
 
+def parse_config(file):
+    v = Validator()
+
+    spec = '''
+    [global]
+        url = string(default='https://bugzilla.redhat.com/xmlrpc.cgi')
+        username = string()
+        password = string()
+    '''.splitlines()
+
+    cfg = ConfigObj(file, configspec=spec)
+    res = cfg.validate(v, preserve_errors=True)
+
+    for entry in flatten_errors(cfg, res):
+        section_list, key, error = entry
+        section_list.append(key)
+        section_string = ','.join(section_list)
+        if error == False:
+            error = 'Missing value or section.'
+        print ','.join(section_list), '=', error
+        sys.exit(1)
+
+    return cfg['global']
+
 def nobody(str):
     '''Shorten the long "nobody's working on it" string.'''
     if str == "Nobody's working on this, feel free to take it":
@@ -81,6 +106,11 @@ def nobody(str):
 def nosec(str):
     '''Remove the seconds from an hh:mm:ss format string.'''
     return str[0:str.rfind(':')]
+
+def human_time(t):
+    '''Turn an ISO date into something more human-friendly.'''
+    t = str(t)
+    return t[0:4] + '-' + t[4:6] + '-' + t[6:8] + ' ' + t[9:]
 
 def to_unicode(object, encoding='utf8', errors='replace'):
     if isinstance(object, basestring):
@@ -97,12 +127,16 @@ def reporter(bug):
         return "(none)"
     return bug.reporter
 
-def yrmonth(str):
+def yrmonth(d):
     '''Turn a bugzilla date into Month YYYY string.'''
     m = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
             'August', 'September', 'October', 'November', 'December']
-    year = str.split('-')[0]
-    month = int(str.split('-')[1])-1
+
+    #year = str.split('-')[0]
+    #month = int(str.split('-')[1])-1
+    str = d.value
+    year = str[0:4]
+    month = int(str[4:6])-1
     return m[month] + ' ' + year
 
 def seq_max_split(seq, max_entries):
@@ -125,64 +159,71 @@ def run_query(bz):
     alldeps = set([])
     closeddeps = set([])
 
-    querydata['column_list'] = ['opendate', 'changeddate', 'bug_severity',
-            'alias', 'assigned_to', 'reporter', 'bug_status', 'resolution',
-            'component', 'blockedby', 'dependson', 'short_desc',
-            'status_whiteboard', 'flag_types']
+    querydata['include_fields'] = ['id', 'creation_time', 'last_change_time', 'bug_severity',
+            'alias', 'assigned_to', 'product', 'creator', 'creator_id', 'status', 'resolution',
+            'component', 'blocks', 'depends_on', 'summary',
+            'whiteboard', 'flags']
+    querydata['extra_values'] = []
     querydata['bug_status'] = ['NEW', 'ASSIGNED', 'MODIFIED']
     querydata['product'] = ['Fedora', 'Fedora EPEL']
     querydata['component'] = ['Package Review']
+    querydata['query_format'] = 'advanced'
 
     # Look up tickets with no flag set
-    querydata['field0-0-0'] = 'flagtypes.name'
-    querydata['type0-0-0'] = 'notregexp'
-    querydata['value0-0-0'] = 'fedora-review[-+?]'
-    bugs = filter(lambda b: str(b.bug_id) not in trackers, bz.query(querydata))
+    querydata['f1'] = 'flagtypes.name'
+    querydata['o1'] = 'notregexp'
+    querydata['v1'] = 'fedora-review[-+?]'
+    bugs = filter(lambda b: b.id not in trackers, bz.query(querydata))
 
     for bug in bugs:
-        bugdata[bug.bug_id] = {}
-        bugdata[bug.bug_id]['hidden'] = 0
-        bugdata[bug.bug_id]['blockedby'] = set(str(bug.blockedby).split(', '))-set([''])
-        bugdata[bug.bug_id]['depends'] = set(str(bug.dependson).split(', '))-set([''])
-        bugdata[bug.bug_id]['reviewflag'] = ' '
+        bugdata[bug.id] = {}
+        bugdata[bug.id]['hidden'] = 0
+        bugdata[bug.id]['blocks'] = bug.blocks
+        bugdata[bug.id]['depends'] = bug.depends_on
+        bugdata[bug.id]['reviewflag'] = ' '
 
         # Keep track of dependencies in unflagged tickets
-        alldeps |= bugdata[bug.bug_id]['depends']
+        if bug.depends_on:
+            alldeps.update(bug.depends_on)
 
     # Get the status of each dependency
+    # Drop back to raw xmlrpc here because python-bugzilla doesn't support
+    # getbugssimple for the new bugzilla.
     for i in seq_max_split(alldeps, 500):
-        for bug in filter(None, bz.getbugssimple(i)):
-            if bug.bug_status == 'CLOSED':
-                closeddeps.add(str(bug.bug_id))
+        for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1})['bugs']):
+            if bug['status'] == 'CLOSED':
+                closeddeps.add(bug['id'])
+
 
     # Some special processing for those unflagged tickets
     def opendep(id): return id not in closeddeps
     for bug in bugs:
+        wb = string.lower(bug.whiteboard)
         if (bug.bug_status != 'CLOSED' and
-            (string.lower(bug.status_whiteboard).find('notready') >= 0
-                    or string.lower(bug.status_whiteboard).find('buildfails') >= 0
-                    or string.lower(bug.status_whiteboard).find('stalledsubmitter') >= 0
-                    or string.lower(bug.status_whiteboard).find('awaitingsubmitter') >= 0
-                    or BUNDLED in bugdata[bug.bug_id]['blockedby']
-                    or LEGAL in bugdata[bug.bug_id]['blockedby']
-                    or filter(opendep, bugdata[bug.bug_id]['depends']))):
-            bugdata[bug.bug_id]['hidden'] = 1
+            (wb.find('notready') >= 0
+                    or wb.find('buildfails') >= 0
+                    or wb.find('stalledsubmitter') >= 0
+                    or wb.find('awaitingsubmitter') >= 0
+                    or BUNDLED in bugdata[bug.id]['blocks']
+                    or LEGAL in bugdata[bug.id]['blocks']
+                    or filter(opendep, bugdata[bug.id]['depends']))):
+            bugdata[bug.id]['hidden'] = 1
 
     # Now process the other three flags; not much special processing for them
-    querydata['type0-0-0'] = 'equals'
+    querydata['o1'] = 'equals'
 #    for i in ['-', '+', '?']:
     for i in ['-', '?']:
-        querydata['value0-0-0'] = 'fedora-review' + i
+        querydata['v1'] = 'fedora-review' + i
         b1 = bz.query(querydata)
         for bug in b1:
-            bugdata[bug.bug_id] = {}
-            bugdata[bug.bug_id]['hidden'] = 0
-            bugdata[bug.bug_id]['blockedby'] = []
-            bugdata[bug.bug_id]['depends'] = []
-            bugdata[bug.bug_id]['reviewflag'] = i
+            bugdata[bug.id] = {}
+            bugdata[bug.id]['hidden'] = 0
+            bugdata[bug.id]['blocks'] = []
+            bugdata[bug.id]['depends'] = []
+            bugdata[bug.id]['reviewflag'] = i
         bugs += b1
 
-    bugs.sort(key=operator.attrgetter('bug_id'))
+    bugs.sort(key=operator.attrgetter('id'))
 
     return [bugs, bugdata]
 
@@ -227,15 +268,16 @@ def select_merge(bug, bugd):
     return 0
 
 def select_needsponsor(bug, bugd):
+    wb = string.lower(bug.whiteboard)
     if (bugd['reviewflag'] == ' '
-            and NEEDSPONSOR in bugd['blockedby']
-            and LEGAL not in bugd['blockedby']
+            and NEEDSPONSOR in bugd['blocks']
+            and LEGAL not in bugd['blocks']
             and bug.bug_status != 'CLOSED'
             and nobody(bug.assigned_to) == '(Nobody)'
-            and string.lower(bug.status_whiteboard).find('buildfails') < 0
-            and string.lower(bug.status_whiteboard).find('notready') < 0
-            and string.lower(bug.status_whiteboard).find('stalledsubmitter') < 0
-            and string.lower(bug.status_whiteboard).find('awaitingsubmitter') < 0):
+            and wb.find('buildfails') < 0
+            and wb.find('notready') < 0
+            and wb.find('stalledsubmitter') < 0
+            and wb.find('awaitingsubmitter') < 0):
         return 1
     return 0
 
@@ -283,9 +325,9 @@ def rowclass_plain(count):
 # Yes, the even/odd classes look backwards, but it looks better this way
 def rowclass_with_sponsor(bug, count):
     rowclass = 'bz_row_odd'
-    if NEEDSPONSOR in bug['blockedby']:
+    if NEEDSPONSOR in bug['blocks']:
         rowclass = 'bz_state_NEEDSPONSOR'
-    elif FEATURE in bug['blockedby']:
+    elif FEATURE in bug['blocks']:
         rowclass = 'bz_state_FEATURE'
     elif count % 2 == 1:
         rowclass = 'bz_row_even'
@@ -293,11 +335,11 @@ def rowclass_with_sponsor(bug, count):
 
 # The data from a standard row in a bug list
 def std_row(bug, rowclass):
-    return {'id': bug.bug_id,
+    return {'id': bug.id,
             'alias': to_unicode(bug.alias),
             'assignee': nobody(to_unicode(bug.assigned_to)),
             'class': rowclass,
-            'lastchange': bug.changeddate,
+            'lastchange': human_time(bug.last_change_time),
             'status': bug.bug_status,
             'summary': to_unicode(bug.short_desc),
             }
@@ -310,8 +352,8 @@ def report_hidden(bugs, bugdata, loader, tmpdir, subs):
     curmonth = ''
 
     for i in bugs:
-        if select_hidden(i, bugdata[i.bug_id]):
-            rowclass = rowclass_with_sponsor(bugdata[i.bug_id], data['count'])
+        if select_hidden(i, bugdata[i.id]):
+            rowclass = rowclass_with_sponsor(bugdata[i.id], data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
 
@@ -325,7 +367,7 @@ def report_review(bugs, bugdata, loader, tmpdir, subs):
     data['title'] = 'Tickets under review'
 
     for i in bugs:
-        if select_review(i, bugdata[i.bug_id]):
+        if select_review(i, bugdata[i.id]):
             rowclass = rowclass_plain(data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
@@ -340,7 +382,7 @@ def report_trivial(bugs, bugdata, loader, tmpdir, subs):
     data['title'] = 'Trivial reviews'
 
     for i in bugs:
-        if select_trivial(i, bugdata[i.bug_id]):
+        if select_trivial(i, bugdata[i.id]):
             rowclass = rowclass_plain(data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
@@ -355,7 +397,7 @@ def report_merge(bugs, bugdata, loader, tmpdir, subs):
     data['title'] = 'Merge reviews'
 
     for i in bugs:
-        if select_merge(i, bugdata[i.bug_id]):
+        if select_merge(i, bugdata[i.id]):
             rowclass = rowclass_plain(data['count'])
             data['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
@@ -374,7 +416,7 @@ def report_needsponsor(bugs, bugdata, loader, tmpdir, subs):
     selected = []
 
     for i in bugs:
-        if select_needsponsor(i, bugdata[i.bug_id]):
+        if select_needsponsor(i, bugdata[i.id]):
             selected.append(i)
     selected.sort(key=reporter)
 
@@ -403,15 +445,15 @@ def report_epel(bugs, bugdata, loader, tmpdir, subs):
     curcount = 0
 
     for i in bugs:
-        if select_epel(i, bugdata[i.bug_id]):
-            if curmonth != yrmonth(i.opendate):
+        if select_epel(i, bugdata[i.id]):
+            if curmonth != yrmonth(i.creation_time):
                 if curcount > 0:
                     data['months'][-1]['month'] += (" (%d)" % curcount)
-                data['months'].append({'month': yrmonth(i.opendate), 'bugs': []})
-                curmonth = yrmonth(i.opendate)
+                data['months'].append({'month': yrmonth(i.creation_time), 'bugs': []})
+                curmonth = yrmonth(i.creation_time)
                 curcount = 0
 
-            rowclass = rowclass_with_sponsor(bugdata[i.bug_id], curcount)
+            rowclass = rowclass_with_sponsor(bugdata[i.id], curcount)
             data['months'][-1]['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
             curcount +=1
@@ -432,15 +474,15 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
     curcount = 0
 
     for i in bugs:
-        if select_new(i, bugdata[i.bug_id]):
-            if curmonth != yrmonth(i.opendate):
+        if select_new(i, bugdata[i.id]):
+            if curmonth != yrmonth(i.creation_time):
                 if curcount > 0:
                     data['months'][-1]['month'] += (" (%d)" % curcount)
-                data['months'].append({'month': yrmonth(i.opendate), 'bugs': []})
-                curmonth = yrmonth(i.opendate)
+                data['months'].append({'month': yrmonth(i.creation_time), 'bugs': []})
+                curmonth = yrmonth(i.creation_time)
                 curcount = 0
 
-            rowclass = rowclass_with_sponsor(bugdata[i.bug_id], curcount)
+            rowclass = rowclass_with_sponsor(bugdata[i.id], curcount)
             data['months'][-1]['bugs'].append(std_row(i, rowclass))
             data['count'] +=1
             curcount +=1
@@ -454,7 +496,9 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
 
 if __name__ == '__main__':
     options = parse_commandline()
-    bz = bugzilla.Bugzilla(url=options.url, cookiefile=None)
+    config = parse_config(options.configfile)
+    #bz = bugzilla.Bugzilla(url=config['url'], cookiefile=None, user=config['username'], password=config['password'])
+    bz = bugzilla.Bugzilla(url=config['url'], cookiefile=None)
     t = time.time()
     (bugs, bugdata) = run_query(bz)
     querytime = time.time() - t
