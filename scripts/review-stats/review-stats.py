@@ -187,13 +187,10 @@ def run_query(bz):
             alldeps.update(bug.depends_on)
 
     # Get the status of each dependency
-    # Drop back to raw xmlrpc here because python-bugzilla doesn't support
-    # getbugssimple for the new bugzilla.
     for i in seq_max_split(alldeps, 500):
-        for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1})['bugs']):
-            if bug['status'] == 'CLOSED':
-                closeddeps.add(bug['id'])
-
+        for bug in bz.getbugssimple(i):
+            if bug.status == 'CLOSED':
+                closeddeps.add(bug.id)
 
     # Some special processing for those unflagged tickets
     def opendep(id): return id not in closeddeps
