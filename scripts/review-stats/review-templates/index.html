@@ -53,7 +53,7 @@ available:
 Last updated: ${update}, query time: ${'{0:0.3f}'.format(querytime)}s, output time: ${'{0:0.3f}'.format(outputtime)}s, version: ${version}.
 <br/>
     <h2>Quick Review Search</h2>
-    <form name="queryform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
+    <form name="packageformform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
           onsubmit="if (this.short_desc.value == '')
                     { alert('Please enter a search term.');
                       return false; } return true;">
@@ -66,13 +66,58 @@ Last updated: ${update}, query time: ${'{0:0.3f}'.format(querytime)}s, output ti
       <input type="hidden" id="query_format" name="query_format" value="advanced"/>
     </div>
     </form>
+
+    <form name="submittedform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
+          onsubmit="if (this.emailreporter1.value == '')
+                    { alert('Please enter a search term.');
+                      return false; } return true;">
+    <div>
+      <p>Enter an email address to search for reviews they submitted</p>
+      <input type="text" id="email1" name="email1"/>
+      <input type="hidden" id="emailreporter1" name="emailreporter1" value="1"/>
+      <input type="hidden" id="emailtype1" name="emailtype1" value="substring"/>
+      <input type="hidden" id="component" name="component" multiple="multiple" value="Package Review"/>
+      <input type="hidden" id="query_format" name="query_format" value="advanced"/>
+      <input id="Search" type="submit" value="Search"/>
+    </div>
+    </form>
+
+    <form name="reviewedform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
+          onsubmit="if (this.emailasssignedto_1.value == '')
+                    { alert('Please enter a search term.');
+                      return false; } return true;">
+    <div>
+      <p>Enter an email address to search for packages they reviewed</p>
+      <input type="text" id="email1" name="email1"/>
+      <input type="hidden" id="emailassigned_to1" name="emailassigned_to1" value="1"/>
+      <input type="hidden" id="emailtype1" name="emailtype1" value="substring"/>
+      <input type="hidden" id="component" name="component" multiple="multiple" value="Package Review"/>
+      <input type="hidden" id="query_format" name="query_format" value="advanced"/>
+      <input id="Search" type="submit" value="Search"/>
+    </div>
+    </form>
+
+    <form name="reviewedform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
+          onsubmit="if (this.emaillongdesc1.value == '')
+                    { alert('Please enter a search term.');
+                      return false; } return true;">
+    <div>
+      <p>Enter an email address to search for reviews on which they commented</p>
+      <input type="text" id="email1" name="email1"/>
+      <input type="hidden" id="emaillongdesc1" name="emaillongdesc1" value="1"/>
+      <input type="hidden" id="emailtype1" name="emailtype1" value="substring"/>
+      <input type="hidden" id="component" name="component" multiple="multiple" value="Package Review"/>
+      <input type="hidden" id="query_format" name="query_format" value="advanced"/>
+      <input id="Search" type="submit" value="Search"/>
+    </div>
+    </form>
   </div>
 </div>
     <div id="bottom">
       <div id="footer">
         <p class="copy">
         &copy; 2012 Red Hat, Inc. and others.
-        Please send any comments or corrections to the <a href="mailto:webmaster@fedoraproject.org">websites team</a>.
+        Currently maintained by Jason Tibbitts; please send comments or questions to him or file tickets on <a href="https://fedorahosted.org/fedora-infrastructure/">the infrastructure trac</a>.
         </p>
         <p class="disclaimer">
         The Fedora Project is maintained and driven by the community and sponsored by Red Hat.  This is a community maintained site.  Red Hat is not responsible for content.
