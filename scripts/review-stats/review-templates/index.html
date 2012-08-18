@@ -68,7 +68,7 @@ Last updated: ${update}, query time: ${'{0:0.3f}'.format(querytime)}s, output ti
     </form>
 
     <form name="submittedform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
-          onsubmit="if (this.emailreporter1.value == '')
+          onsubmit="if (this.email1.value == '')
                     { alert('Please enter a search term.');
                       return false; } return true;">
     <div>
@@ -83,7 +83,7 @@ Last updated: ${update}, query time: ${'{0:0.3f}'.format(querytime)}s, output ti
     </form>
 
     <form name="reviewedform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
-          onsubmit="if (this.emailasssignedto_1.value == '')
+          onsubmit="if (this.email1.value == '')
                     { alert('Please enter a search term.');
                       return false; } return true;">
     <div>
@@ -97,8 +97,8 @@ Last updated: ${update}, query time: ${'{0:0.3f}'.format(querytime)}s, output ti
     </div>
     </form>
 
-    <form name="reviewedform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
-          onsubmit="if (this.emaillongdesc1.value == '')
+    <form name="commentedform" action="http://bugzilla.redhat.com/buglist.cgi" method="get"
+          onsubmit="if (this.email1.value == '')
                     { alert('Please enter a search term.');
                       return false; } return true;">
     <div>
