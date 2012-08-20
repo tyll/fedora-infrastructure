@@ -99,7 +99,8 @@ def parse_config(file):
 
 def nobody(str):
     '''Shorten the long "nobody's working on it" string.'''
-    if str == "Nobody's working on this, feel free to take it":
+    if (str == "Nobody's working on this, feel free to take it"
+            or str == "nobody@fedoraproject.org"):
         return "(Nobody)"
     return str
 
@@ -107,8 +108,13 @@ def nosec(str):
     '''Remove the seconds from an hh:mm:ss format string.'''
     return str[0:str.rfind(':')]
 
-def human_time(t):
+def human_date(t):
     '''Turn an ISO date into something more human-friendly.'''
+    t = str(t)
+    return t[0:4] + '-' + t[4:6] + '-' + t[6:8]
+
+def human_time(t):
+    '''Turn an ISO date into something more human-friendly, with time.'''
     t = str(t)
     return t[0:4] + '-' + t[4:6] + '-' + t[6:8] + ' ' + t[9:]
 
@@ -156,20 +162,23 @@ def seq_max_split(seq, max_entries):
 def run_query(bz):
     querydata = {}
     bugdata = {}
+    interesting = {}
     alldeps = set([])
     closeddeps = set([])
+    needinfo = set([])
+    usermap = {}
 
     querydata['include_fields'] = ['id', 'creation_time', 'last_change_time', 'bug_severity',
             'alias', 'assigned_to', 'product', 'creator', 'creator_id', 'status', 'resolution',
             'component', 'blocks', 'depends_on', 'summary',
             'whiteboard', 'flags']
-    querydata['extra_values'] = []
+    #querydata['extra_values'] = []
     querydata['bug_status'] = ['NEW', 'ASSIGNED', 'MODIFIED']
     querydata['product'] = ['Fedora', 'Fedora EPEL']
     querydata['component'] = ['Package Review']
     querydata['query_format'] = 'advanced'
 
-    # Look up tickets with no flag set
+    # Look up tickets with no fedora-review flag set
     querydata['f1'] = 'flagtypes.name'
     querydata['o1'] = 'notregexp'
     querydata['v1'] = 'fedora-review[-+?]'
@@ -178,21 +187,40 @@ def run_query(bz):
     for bug in bugs:
         bugdata[bug.id] = {}
         bugdata[bug.id]['hidden'] = 0
+        bugdata[bug.id]['needinfo'] = 0
         bugdata[bug.id]['blocks'] = bug.blocks
         bugdata[bug.id]['depends'] = bug.depends_on
         bugdata[bug.id]['reviewflag'] = ' '
 
-        # Keep track of dependencies in unflagged tickets
+        # Keep track of "interesting" bugs for which we'll need to do complete
+        # lookups.  We want anything with 
         if bug.depends_on:
             alldeps.update(bug.depends_on)
 
-    # Get the status of each dependency
-    for i in seq_max_split(alldeps, 500):
-        for bug in bz.getbugssimple(i):
-            if bug.status == 'CLOSED':
-                closeddeps.add(bug.id)
+        if bug.flags.find('needinfo?') >= 0:
+            needinfo.add(bug.id)
 
-    # Some special processing for those unflagged tickets
+    # Get the status of each "interesting" bug
+    for i in seq_max_split(alldeps.union(needinfo), 500):
+        for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1, 'extra_fields': ['flags']})['bugs']):
+            interesting[bug['id']] = bug
+
+    # Note the dependencies which are closed
+    for i in alldeps:
+        if interesting[i]['status'] == 'CLOSED':
+            closeddeps.add(i)
+
+    # Note the ones flagged needinfo->reporter
+    for i in needinfo:
+        for j in interesting[i]['flags']:
+            if (j['name'] == 'needinfo'
+                    and j['status'] == '?'
+                    and j['requestee'] == interesting[i]['creator']):
+                bugdata[i]['needinfo'] = 1
+                bugdata[i]['hidden'] = 1
+
+    # Hide tickets blocked by other bugs or whose with various blockers and
+    # statuses.
     def opendep(id): return id not in closeddeps
     for bug in bugs:
         wb = string.lower(bug.whiteboard)
@@ -205,6 +233,14 @@ def run_query(bz):
                     or LEGAL in bugdata[bug.id]['blocks']
                     or filter(opendep, bugdata[bug.id]['depends']))):
             bugdata[bug.id]['hidden'] = 1
+
+    # Now we need to look up the names of the users
+    for i in bugs:
+        if select_needsponsor(i, bugdata[i.id]):
+           usermap[i.reporter] = ''
+
+    for i in bz._proxy.User.get({'names': usermap.keys()})['users']:
+        usermap[i['name']] = i['real_name']
 
     # Now process the other three flags; not much special processing for them
     querydata['o1'] = 'equals'
@@ -222,7 +258,7 @@ def run_query(bz):
 
     bugs.sort(key=operator.attrgetter('id'))
 
-    return [bugs, bugdata]
+    return [bugs, bugdata, usermap]
 
     # Need to generate reports:
     #  "Accepted" and closed 
@@ -267,6 +303,7 @@ def select_merge(bug, bugd):
 def select_needsponsor(bug, bugd):
     wb = string.lower(bug.whiteboard)
     if (bugd['reviewflag'] == ' '
+            and bugd['needinfo'] == 0
             and NEEDSPONSOR in bugd['blocks']
             and LEGAL not in bugd['blocks']
             and bug.bug_status != 'CLOSED'
@@ -403,13 +440,13 @@ def report_merge(bugs, bugdata, loader, tmpdir, subs):
 
     return data['count']
 
-def report_needsponsor(bugs, bugdata, loader, tmpdir, subs):
-    # Note that this abuses the "month" view to group by reporter instead of month.
+def report_needsponsor(bugs, bugdata, loader, usermap, tmpdir, subs):
     data = deepcopy(subs)
-    data['description'] = 'This page lists all new NEEDSPONSOR tickets (those without the fedora-revlew flag set)'
+    data['description'] = 'This page lists all new NEEDSPONSOR tickets (those without the fedora-revlew flag set).'
     data['title'] = 'NEEDSPONSOR tickets'
     curreporter = ''
     curcount = 0
+    oldest = {}
     selected = []
 
     for i in bugs:
@@ -417,19 +454,31 @@ def report_needsponsor(bugs, bugdata, loader, tmpdir, subs):
             selected.append(i)
     selected.sort(key=reporter)
 
+    # Determine the oldest reported bug
+    for i in selected:
+        if i.reporter not in oldest:
+            oldest[i.reporter] = i.creation_time
+        elif i.creation_time < oldest[i.reporter]:
+            oldest[i.reporter] = i.creation_time
+            
     for i in selected:
         rowclass = rowclass_plain(data['count'])
+        r = i.reporter;
 
-        if curreporter != reporter(i):
-            data['months'].append({'month': reporter(i), 'bugs': []})
-            curreporter = reporter(i)
+        if curreporter != r:
+            if (r in usermap and len(usermap[r])):
+                name = usermap[r]
+            else:
+                name = r
+            data['packagers'].append({'email': r, 'name': name, 'oldest': human_date(oldest[r]), 'bugs': []})
+            curreporter = r
             curcount = 0
 
-        data['months'][-1]['bugs'].append(std_row(i, rowclass))
+        data['packagers'][-1]['bugs'].append(std_row(i, rowclass))
         data['count'] +=1
         curcount +=1
 
-    write_html(loader, 'bymonth.html', data, tmpdir, 'NEEDSPONSOR.html')
+    write_html(loader, 'needsponsor.html', data, tmpdir, 'NEEDSPONSOR.html')
 
     return data['count']
 
@@ -494,10 +543,10 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
 if __name__ == '__main__':
     options = parse_commandline()
     config = parse_config(options.configfile)
-    #bz = bugzilla.Bugzilla(url=config['url'], cookiefile=None, user=config['username'], password=config['password'])
-    bz = bugzilla.Bugzilla(url=config['url'], cookiefile=None)
+    bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None, user=config['username'], password=config['password'])
+    #bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None)
     t = time.time()
-    (bugs, bugdata) = run_query(bz)
+    (bugs, bugdata, usermap) = run_query(bz)
     querytime = time.time() - t
 
     # Don't bother running this stuff until the query completes, since it fails
@@ -512,6 +561,7 @@ if __name__ == '__main__':
             'version': VERSION,
             'count': 0,
             'months': [],
+            'packagers': [],
             'bugs': [],
             }
     args = {'bugs':bugs, 'bugdata':bugdata, 'loader':loader, 'tmpdir':tmpdir, 'subs':subs}
@@ -522,7 +572,7 @@ if __name__ == '__main__':
     subs['epel'] =        report_epel(**args)
     subs['hidden'] =      report_hidden(**args)
     subs['merge'] =       report_merge(**args)
-    subs['needsponsor'] = report_needsponsor(**args)
+    subs['needsponsor'] = report_needsponsor(usermap=usermap, **args)
     subs['review'] =      report_review(**args)
     subs['trivial'] =     report_trivial(**args)
 #    data['accepted_closed'] = report_accepted_closed(bugs, bugdata, loader, tmpdir)
