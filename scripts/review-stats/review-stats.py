@@ -192,8 +192,6 @@ def run_query(bz):
         bugdata[bug.id]['depends'] = bug.depends_on
         bugdata[bug.id]['reviewflag'] = ' '
 
-        # Keep track of "interesting" bugs for which we'll need to do complete
-        # lookups.  We want anything with 
         if bug.depends_on:
             alldeps.update(bug.depends_on)
 
@@ -460,7 +458,7 @@ def report_needsponsor(bugs, bugdata, loader, usermap, tmpdir, subs):
             oldest[i.reporter] = i.creation_time
         elif i.creation_time < oldest[i.reporter]:
             oldest[i.reporter] = i.creation_time
-            
+
     for i in selected:
         rowclass = rowclass_plain(data['count'])
         r = i.reporter;
