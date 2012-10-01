@@ -450,7 +450,6 @@ def report_needsponsor(bugs, bugdata, loader, usermap, tmpdir, subs):
     for i in bugs:
         if select_needsponsor(i, bugdata[i.id]):
             selected.append(i)
-    selected.sort(key=reporter)
 
     # Determine the oldest reported bug
     for i in selected:
@@ -458,6 +457,9 @@ def report_needsponsor(bugs, bugdata, loader, usermap, tmpdir, subs):
             oldest[i.reporter] = i.creation_time
         elif i.creation_time < oldest[i.reporter]:
             oldest[i.reporter] = i.creation_time
+
+    selected.sort(key=reporter)
+    selected.sort(key=lambda a: oldest[a.reporter])
 
     for i in selected:
         rowclass = rowclass_plain(data['count'])
