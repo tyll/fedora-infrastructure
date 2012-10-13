@@ -213,6 +213,7 @@ def run_query(bz):
         for j in interesting[i]['flags']:
             if (j['name'] == 'needinfo'
                     and j['status'] == '?'
+                    and 'requestee' in j
                     and j['requestee'] == interesting[i]['creator']):
                 bugdata[i]['needinfo'] = 1
                 bugdata[i]['hidden'] = 1
