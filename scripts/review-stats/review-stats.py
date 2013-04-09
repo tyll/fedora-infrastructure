@@ -195,8 +195,10 @@ def run_query(bz):
         if bug.depends_on:
             alldeps.update(bug.depends_on)
 
-        if bug.flags.find('needinfo?') >= 0:
-            needinfo.add(bug.id)
+        for flag in bug.flags:
+            if (flag['name'] == 'needinfo'
+                    and flag['status'] == '?'):
+                needinfo.add(bug.id)
 
     # Get the status of each "interesting" bug
     for i in seq_max_split(alldeps.union(needinfo), 500):
