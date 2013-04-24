@@ -1,5 +1,5 @@
 #!/usr/bin/python -t
-VERSION = "3.0"
+VERSION = "3.1"
 
 # $Id: review-stats.py,v 1.12 2010/01/15 05:14:10 tibbs Exp $
 # Note: This script presently lives in internal git and external cvs.  External
@@ -195,14 +195,18 @@ def run_query(bz):
         if bug.depends_on:
             alldeps.update(bug.depends_on)
 
+        # Now have complete flag info; don't need to query it separately
         for flag in bug.flags:
             if (flag['name'] == 'needinfo'
-                    and flag['status'] == '?'):
-                needinfo.add(bug.id)
+                    and flag['status'] == '?'
+                    and 'requestee' in flag
+                    and flag['requestee'] == bug.creator):
+                bugdata[bug.id]['needinfo'] = 1
+                bugdata[bug.id]['hidden'] = 1
 
     # Get the status of each "interesting" bug
-    for i in seq_max_split(alldeps.union(needinfo), 500):
-        for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1, 'extra_fields': ['flags']})['bugs']):
+    for i in seq_max_split(alldeps, 500):
+        for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1})['bugs']):
             interesting[bug['id']] = bug
 
     # Note the dependencies which are closed
@@ -210,17 +214,7 @@ def run_query(bz):
         if interesting[i]['status'] == 'CLOSED':
             closeddeps.add(i)
 
-    # Note the ones flagged needinfo->reporter
-    for i in needinfo:
-        for j in interesting[i]['flags']:
-            if (j['name'] == 'needinfo'
-                    and j['status'] == '?'
-                    and 'requestee' in j
-                    and j['requestee'] == interesting[i]['creator']):
-                bugdata[i]['needinfo'] = 1
-                bugdata[i]['hidden'] = 1
-
-    # Hide tickets blocked by other bugs or whose with various blockers and
+    # Hide tickets blocked by other bugs or those with various blockers and
     # statuses.
     def opendep(id): return id not in closeddeps
     for bug in bugs:
