@@ -234,7 +234,6 @@ def run_query(bz):
         if select_needsponsor(i, bugdata[i.id]):
            usermap[i.reporter] = ''
 
-    print usermap
     for i in bz._proxy.User.get({'names': usermap.keys()})['users']:
         usermap[i['name']] = i['real_name']
 
