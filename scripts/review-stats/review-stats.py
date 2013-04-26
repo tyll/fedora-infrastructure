@@ -234,6 +234,7 @@ def run_query(bz):
         if select_needsponsor(i, bugdata[i.id]):
            usermap[i.reporter] = ''
 
+    print usermap
     for i in bz._proxy.User.get({'names': usermap.keys()})['users']:
         usermap[i['name']] = i['real_name']
 
@@ -364,8 +365,12 @@ def rowclass_with_sponsor(bug, count):
 
 # The data from a standard row in a bug list
 def std_row(bug, rowclass):
+    alias = ''
+    if bug.alias:
+        alias = to_unicode(bug.alias[0])
+
     return {'id': bug.id,
-            'alias': to_unicode(bug.alias),
+            'alias': alias,
             'assignee': nobody(to_unicode(bug.assigned_to)),
             'class': rowclass,
             'lastchange': human_time(bug.last_change_time),
