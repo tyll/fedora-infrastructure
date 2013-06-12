@@ -58,6 +58,8 @@ def parse_commandline():
               help="update frequency", default="60")
     parser.add_option("-t", "--templatedir", dest="templdir",
               help="template directory")
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
+              help="run verbosely")
 
     (options, args) = parser.parse_args()
     tst = str(options.dirname)
@@ -145,6 +147,11 @@ def yrmonth(d):
     month = int(str[4:6])-1
     return m[month] + ' ' + year
 
+def dbprint(str):
+    '''Print string if verbosity is turned on.'''
+    if verbose:
+        print(str)
+
 def seq_max_split(seq, max_entries):
     """ Given a seq, split into a list of lists of length max_entries each. """
     ret = []
@@ -182,7 +189,10 @@ def run_query(bz):
     querydata['f1'] = 'flagtypes.name'
     querydata['o1'] = 'notregexp'
     querydata['v1'] = 'fedora-review[-+?]'
+
+    dbprint("Running main query.")
     bugs = filter(lambda b: b.id not in trackers, bz.query(querydata))
+    dbprint("Done.")
 
     for bug in bugs:
         bugdata[bug.id] = {}
@@ -205,13 +215,17 @@ def run_query(bz):
                 bugdata[bug.id]['hidden'] = 1
 
     # Get the status of each "interesting" bug
+    dbprint("Have %d interesting bugs" % len(alldeps))
     for i in seq_max_split(alldeps, 500):
-        for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1})['bugs']):
-            interesting[bug['id']] = bug
+        dbprint("Looking up bug deps.")
+        #for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1})['bugs']):
+        for bug in filter(None, bz.getbugssimple(i)):
+            interesting[bug.id] = bug
+        dbprint("Done.")
 
     # Note the dependencies which are closed
     for i in alldeps:
-        if interesting[i]['status'] == 'CLOSED':
+        if interesting[i].bug_status == 'CLOSED':
             closeddeps.add(i)
 
     # Hide tickets blocked by other bugs or those with various blockers and
@@ -543,6 +557,7 @@ def report_new(bugs, bugdata, loader, tmpdir, subs):
 
 if __name__ == '__main__':
     options = parse_commandline()
+    verbose = options.verbose
     config = parse_config(options.configfile)
     bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None, user=config['username'], password=config['password'])
     #bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None)
