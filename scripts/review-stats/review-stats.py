@@ -215,8 +215,9 @@ def run_query(bz):
                 bugdata[bug.id]['needinfo'] = 1
                 bugdata[bug.id]['hidden'] = 1
 
-    # Get the status of each "interesting" bug
+    # Find which of the dependencies are closed
     dbprint("Looking up {} bug deps.".format(len(alldeps)))
+    t=time.time()
     for bug in filter(None, bz.query(bz.build_query(bug_id=list(alldeps), status=["CLOSED"]))):
         closeddeps.add(bug.id)
     dbprint("Done; took {:.2f}.".format(time.time()-t))
@@ -241,15 +242,23 @@ def run_query(bz):
         if select_needsponsor(i, bugdata[i.id]):
            usermap[i.reporter] = ''
 
+    dbprint("Looking up {} user names.".format(len(usermap)))
+    t=time.time()
     for i in bz._proxy.User.get({'names': usermap.keys()})['users']:
         usermap[i['name']] = i['real_name']
+    dbprint("Done; took {:.2f}.".format(time.time()-t))
 
     # Now process the other three flags; not much special processing for them
     querydata['o1'] = 'equals'
 #    for i in ['-', '+', '?']:
     for i in ['-', '?']:
         querydata['v1'] = 'fedora-review' + i
+
+        dbprint("Looking up tickets with flag {}.".format(i))
+        t=time.time()
         b1 = bz.query(querydata)
+        dbprint("Done; took {:.2f}.".format(time.time()-t))
+
         for bug in b1:
             bugdata[bug.id] = {}
             bugdata[bug.id]['hidden'] = 0
