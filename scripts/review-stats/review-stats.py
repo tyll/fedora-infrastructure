@@ -191,8 +191,9 @@ def run_query(bz):
     querydata['v1'] = 'fedora-review[-+?]'
 
     dbprint("Running main query.")
+    t = time.time()
     bugs = filter(lambda b: b.id not in trackers, bz.query(querydata))
-    dbprint("Done.")
+    dbprint("Done, took {:.2f}.".format(time.time()-t))
 
     for bug in bugs:
         bugdata[bug.id] = {}
@@ -215,18 +216,10 @@ def run_query(bz):
                 bugdata[bug.id]['hidden'] = 1
 
     # Get the status of each "interesting" bug
-    dbprint("Have %d interesting bugs" % len(alldeps))
-    for i in seq_max_split(alldeps, 500):
-        dbprint("Looking up bug deps.")
-        #for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1})['bugs']):
-        for bug in filter(None, bz.getbugssimple(i)):
-            interesting[bug.id] = bug
-        dbprint("Done.")
-
-    # Note the dependencies which are closed
-    for i in alldeps:
-        if interesting[i].bug_status == 'CLOSED':
-            closeddeps.add(i)
+    dbprint("Looking up {} bug deps.".format(len(alldeps)))
+    for bug in filter(None, bz.query(bz.build_query(bug_id=list(alldeps), status=["CLOSED"]))):
+        closeddeps.add(bug.id)
+    dbprint("Done; took {:.2f}.".format(time.time()-t))
 
     # Hide tickets blocked by other bugs or those with various blockers and
     # statuses.
@@ -560,7 +553,6 @@ if __name__ == '__main__':
     verbose = options.verbose
     config = parse_config(options.configfile)
     bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None, user=config['username'], password=config['password'])
-    #bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None)
     t = time.time()
     (bugs, bugdata, usermap) = run_query(bz)
     querytime = time.time() - t
