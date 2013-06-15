@@ -606,6 +606,9 @@ if __name__ == '__main__':
     options = parse_commandline()
     verbose = options.verbose
     config = parse_config(options.configfile)
+    if config['maxpackages']:
+        maxpackages = int(config['maxpackages'])
+    dbprint("Limiting to {} packages".format(maxpackages))
     bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None, user=config['username'], password=config['password'])
     t = time.time()
     (bugs, bugdata, usermap) = run_query(bz)
