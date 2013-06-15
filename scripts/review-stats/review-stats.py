@@ -39,9 +39,10 @@ GUIDELINES  = 197974
 LEGAL       = 182235
 NEEDSPONSOR = 177841
 SCITECH     = 505154
+SECLAB      = 563471
 
 # These will show up in a query but aren't actual review tickets
-trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
+trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH, SECLAB])
 
 # So the bugzilla module has some way to complain
 logging.basicConfig()
