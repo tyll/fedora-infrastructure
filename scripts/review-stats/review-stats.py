@@ -1,5 +1,5 @@
 #!/usr/bin/python -t
-VERSION = "3.1"
+VERSION = "4.0"
 
 # $Id: review-stats.py,v 1.12 2010/01/15 05:14:10 tibbs Exp $
 # Note: This script presently lives in internal git and external cvs.  External
