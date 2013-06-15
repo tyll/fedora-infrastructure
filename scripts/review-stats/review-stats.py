@@ -397,6 +397,25 @@ def std_row(bug, rowclass):
             'summary': to_unicode(bug.short_desc),
             }
 
+def hidden_reason(reasons):
+    r = ''
+    if 'buildfails' in reasons:
+        r += 'B '
+    if 'blocked' in reasons:
+        r += 'D '
+    if 'excessive' in reasons:
+        r += 'E '
+    if 'legal' in reasons:
+        r += 'L '
+    if 'needinfo' in reasons:
+        r += 'Ni '
+    if 'notready' in reasons:
+        r += 'Nr '
+    if 'stalled' in reasons:
+        r += 'S '
+
+    return r
+
 # Report generators
 def report_hidden(bugs, bugdata, loader, tmpdir, subs):
     data = deepcopy(subs)
@@ -408,9 +427,10 @@ def report_hidden(bugs, bugdata, loader, tmpdir, subs):
         if select_hidden(i, bugdata[i.id]):
             rowclass = rowclass_with_sponsor(bugdata[i.id], data['count'])
             data['bugs'].append(std_row(i, rowclass))
+            data['bugs'][-1]['reason'] = hidden_reason(bugdata[i.id]['hidden'])
             data['count'] +=1
 
-    write_html(loader, 'plain.html', data, tmpdir, 'HIDDEN.html')
+    write_html(loader, 'hidden.html', data, tmpdir, 'HIDDEN.html')
 
     return data['count']
 
