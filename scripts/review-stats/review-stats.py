@@ -197,8 +197,7 @@ def run_query(bz):
 
     for bug in bugs:
         bugdata[bug.id] = {}
-        bugdata[bug.id]['hidden'] = 0
-        bugdata[bug.id]['needinfo'] = 0
+        bugdata[bug.id]['hidden'] = []
         bugdata[bug.id]['blocks'] = bug.blocks
         bugdata[bug.id]['depends'] = bug.depends_on
         bugdata[bug.id]['reviewflag'] = ' '
@@ -212,8 +211,7 @@ def run_query(bz):
                     and flag['status'] == '?'
                     and 'requestee' in flag
                     and flag['requestee'] == bug.creator):
-                bugdata[bug.id]['needinfo'] = 1
-                bugdata[bug.id]['hidden'] = 1
+                bugdata[bug.id]['hidden'].append('needinfo')
 
     # Find which of the dependencies are closed
     dbprint("Looking up {} bug deps.".format(len(alldeps)))
@@ -227,15 +225,21 @@ def run_query(bz):
     def opendep(id): return id not in closeddeps
     for bug in bugs:
         wb = string.lower(bug.whiteboard)
-        if (bug.bug_status != 'CLOSED' and
-            (wb.find('notready') >= 0
-                    or wb.find('buildfails') >= 0
-                    or wb.find('stalledsubmitter') >= 0
-                    or wb.find('awaitingsubmitter') >= 0
-                    or BUNDLED in bugdata[bug.id]['blocks']
-                    or LEGAL in bugdata[bug.id]['blocks']
-                    or filter(opendep, bugdata[bug.id]['depends']))):
-            bugdata[bug.id]['hidden'] = 1
+        if bug.bug_status != 'CLOSED':
+            if wb.find('notready') >= 0:
+                bugdata[bug.id]['hidden'].append('notready')
+            if  wb.find('buildfails') >= 0:
+                bugdata[bug.id]['hidden'].append('buildfails')
+            if wb.find('stalledsubmitter') >= 0:
+                bugdata[bug.id]['hidden'].append('stalled')
+            if wb.find('awaitingsubmitter') >= 0:
+                bugdata[bug.id]['hidden'].append('stalled')
+            if BUNDLED in bugdata[bug.id]['blocks']:
+                bugdata[bug.id]['hidden'].append('bundled')
+            if LEGAL in bugdata[bug.id]['blocks']:
+                bugdata[bug.id]['hidden'].append('legal')
+            if filter(opendep, bugdata[bug.id]['depends']):
+                bugdata[bug.id]['hidden'].append('blocked')
 
     # Now we need to look up the names of the users
     for i in bugs:
@@ -261,7 +265,7 @@ def run_query(bz):
 
         for bug in b1:
             bugdata[bug.id] = {}
-            bugdata[bug.id]['hidden'] = 0
+            bugdata[bug.id]['hidden'] = []
             bugdata[bug.id]['blocks'] = []
             bugdata[bug.id]['depends'] = []
             bugdata[bug.id]['reviewflag'] = i
@@ -300,7 +304,7 @@ def write_html(loader, template, data, dir, fname):
 
 # Selection functions (should all be predicates)
 def select_hidden(bug, bugd):
-    if bugd['hidden'] == 1:
+    if len(bugd['hidden']) > 0:
         return 1
     return 0
 
@@ -314,7 +318,7 @@ def select_merge(bug, bugd):
 def select_needsponsor(bug, bugd):
     wb = string.lower(bug.whiteboard)
     if (bugd['reviewflag'] == ' '
-            and bugd['needinfo'] == 0
+            and 'needinfo' not in bugd['hidden']
             and NEEDSPONSOR in bugd['blocks']
             and LEGAL not in bugd['blocks']
             and bug.bug_status != 'CLOSED'
@@ -344,7 +348,7 @@ def select_epel(bug, bugd):
     if (bugd['reviewflag'] == ' '
             and bug.product == 'Fedora EPEL'
             and bug.bug_status != 'CLOSED'
-            and bugd['hidden'] == 0
+            and len(bugd['hidden']) == 0
             and nobody(bug.assigned_to) == '(Nobody)'
             and bug.short_desc.find('Merge Review') < 0):
         return 1
@@ -356,7 +360,7 @@ def select_new(bug, bugd):
     if (bugd['reviewflag'] == ' '
             and bug.product == 'Fedora'
             and bug.bug_status != 'CLOSED'
-            and bugd['hidden'] == 0
+            and len(bugd['hidden']) == 0
             and nobody(bug.assigned_to) == '(Nobody)'
             and bug.short_desc.find('Merge Review') < 0):
         return 1
