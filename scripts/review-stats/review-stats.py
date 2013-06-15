@@ -44,6 +44,9 @@ SECLAB      = 563471
 # These will show up in a query but aren't actual review tickets
 trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH, SECLAB])
 
+# How many packages per submitter are allowed in the main queue
+maxpackages = 5
+
 # So the bugzilla module has some way to complain
 logging.basicConfig()
 #logging.basicConfig(level=logging.DEBUG)
@@ -241,6 +244,23 @@ def run_query(bz):
                 bugdata[bug.id]['hidden'].append('legal')
             if filter(opendep, bugdata[bug.id]['depends']):
                 bugdata[bug.id]['hidden'].append('blocked')
+
+    # Count up each submitter's tickets and hide excessive submissions.  Want
+    # to make sure one submitter only has 'maxpackages' tickets in the NEW
+    # queue at one time.  Already-hidden packages don't count.
+    submitters = {}
+    for i in bugs:
+        if i.reporter not in submitters:
+            submitters[i.reporter] = 0
+
+        # Don't count tickets which are already hidden
+        if len(bugdata[i.id]['hidden']):
+            continue
+
+        submitters[i.reporter] += 1
+        if (submitters[i.reporter] > maxpackages and
+                'nobody@fedoraproject.org' not in i.reporter):
+            bugdata[i.id]['hidden'].append('excessive')
 
     # Now we need to look up the names of the users
     for i in bugs:
