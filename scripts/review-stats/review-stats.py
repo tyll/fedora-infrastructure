@@ -197,7 +197,7 @@ def run_query(bz):
     dbprint("Running main query.")
     t = time.time()
     bugs = filter(lambda b: b.id not in trackers, bz.query(querydata))
-    dbprint("Done, took {:.2f}.".format(time.time()-t))
+    dbprint("Done, took {0:.2f}.".format(time.time()-t))
 
     for bug in bugs:
         bugdata[bug.id] = {}
@@ -222,7 +222,7 @@ def run_query(bz):
     t=time.time()
     for bug in filter(None, bz.query(bz.build_query(bug_id=list(alldeps), status=["CLOSED"]))):
         closeddeps.add(bug.id)
-    dbprint("Done; took {:.2f}.".format(time.time()-t))
+    dbprint("Done; took {0:.2f}.".format(time.time()-t))
 
     # Hide tickets blocked by other bugs or those with various blockers and
     # statuses.
@@ -271,7 +271,7 @@ def run_query(bz):
     t=time.time()
     for i in bz._proxy.User.get({'names': usermap.keys()})['users']:
         usermap[i['name']] = i['real_name']
-    dbprint("Done; took {:.2f}.".format(time.time()-t))
+    dbprint("Done; took {0:.2f}.".format(time.time()-t))
 
     # Now process the other three flags; not much special processing for them
     querydata['o1'] = 'equals'
@@ -282,7 +282,7 @@ def run_query(bz):
         dbprint("Looking up tickets with flag {0}.".format(i))
         t=time.time()
         b1 = bz.query(querydata)
-        dbprint("Done; took {:.2f}.".format(time.time()-t))
+        dbprint("Done; took {0:.2f}.".format(time.time()-t))
 
         for bug in b1:
             bugdata[bug.id] = {}
