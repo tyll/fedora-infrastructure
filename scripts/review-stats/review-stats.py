@@ -1,5 +1,5 @@
 #!/usr/bin/python -t
-VERSION = "3.1"
+VERSION = "4.0"
 
 # $Id: review-stats.py,v 1.12 2010/01/15 05:14:10 tibbs Exp $
 # Note: This script presently lives in internal git and external cvs.  External
@@ -39,9 +39,13 @@ GUIDELINES  = 197974
 LEGAL       = 182235
 NEEDSPONSOR = 177841
 SCITECH     = 505154
+SECLAB      = 563471
 
 # These will show up in a query but aren't actual review tickets
-trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH])
+trackers = set([ACCEPT, BUNDLED, FEATURE, NEEDSPONSOR, GUIDELINES, SCITECH, SECLAB])
+
+# How many packages per submitter are allowed in the main queue
+maxpackages = 5
 
 # So the bugzilla module has some way to complain
 logging.basicConfig()
@@ -191,13 +195,13 @@ def run_query(bz):
     querydata['v1'] = 'fedora-review[-+?]'
 
     dbprint("Running main query.")
+    t = time.time()
     bugs = filter(lambda b: b.id not in trackers, bz.query(querydata))
-    dbprint("Done.")
+    dbprint("Done, took {0:.2f}.".format(time.time()-t))
 
     for bug in bugs:
         bugdata[bug.id] = {}
-        bugdata[bug.id]['hidden'] = 0
-        bugdata[bug.id]['needinfo'] = 0
+        bugdata[bug.id]['hidden'] = []
         bugdata[bug.id]['blocks'] = bug.blocks
         bugdata[bug.id]['depends'] = bug.depends_on
         bugdata[bug.id]['reviewflag'] = ' '
@@ -211,55 +215,78 @@ def run_query(bz):
                     and flag['status'] == '?'
                     and 'requestee' in flag
                     and flag['requestee'] == bug.creator):
-                bugdata[bug.id]['needinfo'] = 1
-                bugdata[bug.id]['hidden'] = 1
+                bugdata[bug.id]['hidden'].append('needinfo')
 
-    # Get the status of each "interesting" bug
-    dbprint("Have %d interesting bugs" % len(alldeps))
-    for i in seq_max_split(alldeps, 500):
-        dbprint("Looking up bug deps.")
-        #for bug in filter(None, bz._proxy.Bug.get_bugs({'ids':i, 'permissive': 1})['bugs']):
-        for bug in filter(None, bz.getbugssimple(i)):
-            interesting[bug.id] = bug
-        dbprint("Done.")
-
-    # Note the dependencies which are closed
-    for i in alldeps:
-        if interesting[i].bug_status == 'CLOSED':
-            closeddeps.add(i)
+    # Find which of the dependencies are closed
+    dbprint("Looking up {0} bug deps.".format(len(alldeps)))
+    t=time.time()
+    for bug in filter(None, bz.query(bz.build_query(bug_id=list(alldeps), status=["CLOSED"]))):
+        closeddeps.add(bug.id)
+    dbprint("Done; took {0:.2f}.".format(time.time()-t))
 
     # Hide tickets blocked by other bugs or those with various blockers and
     # statuses.
     def opendep(id): return id not in closeddeps
     for bug in bugs:
         wb = string.lower(bug.whiteboard)
-        if (bug.bug_status != 'CLOSED' and
-            (wb.find('notready') >= 0
-                    or wb.find('buildfails') >= 0
-                    or wb.find('stalledsubmitter') >= 0
-                    or wb.find('awaitingsubmitter') >= 0
-                    or BUNDLED in bugdata[bug.id]['blocks']
-                    or LEGAL in bugdata[bug.id]['blocks']
-                    or filter(opendep, bugdata[bug.id]['depends']))):
-            bugdata[bug.id]['hidden'] = 1
+        if bug.bug_status != 'CLOSED':
+            if wb.find('notready') >= 0:
+                bugdata[bug.id]['hidden'].append('notready')
+            if  wb.find('buildfails') >= 0:
+                bugdata[bug.id]['hidden'].append('buildfails')
+            if wb.find('stalledsubmitter') >= 0:
+                bugdata[bug.id]['hidden'].append('stalled')
+            if wb.find('awaitingsubmitter') >= 0:
+                bugdata[bug.id]['hidden'].append('stalled')
+            if BUNDLED in bugdata[bug.id]['blocks']:
+                bugdata[bug.id]['hidden'].append('bundled')
+            if LEGAL in bugdata[bug.id]['blocks']:
+                bugdata[bug.id]['hidden'].append('legal')
+            if filter(opendep, bugdata[bug.id]['depends']):
+                bugdata[bug.id]['hidden'].append('blocked')
+
+    # Count up each submitter's tickets and hide excessive submissions.  Want
+    # to make sure one submitter only has 'maxpackages' tickets in the NEW
+    # queue at one time.  Already-hidden packages don't count.
+    submitters = {}
+    for i in bugs:
+        if i.reporter not in submitters:
+            submitters[i.reporter] = 0
+
+        # Don't count tickets which are already hidden
+        if len(bugdata[i.id]['hidden']):
+            continue
+
+        submitters[i.reporter] += 1
+        if (submitters[i.reporter] > maxpackages and
+                'nobody@fedoraproject.org' not in i.reporter):
+            bugdata[i.id]['hidden'].append('excessive')
 
     # Now we need to look up the names of the users
     for i in bugs:
         if select_needsponsor(i, bugdata[i.id]):
            usermap[i.reporter] = ''
 
+    dbprint("Looking up {0} user names.".format(len(usermap)))
+    t=time.time()
     for i in bz._proxy.User.get({'names': usermap.keys()})['users']:
         usermap[i['name']] = i['real_name']
+    dbprint("Done; took {0:.2f}.".format(time.time()-t))
 
     # Now process the other three flags; not much special processing for them
     querydata['o1'] = 'equals'
 #    for i in ['-', '+', '?']:
     for i in ['-', '?']:
         querydata['v1'] = 'fedora-review' + i
+
+        dbprint("Looking up tickets with flag {0}.".format(i))
+        t=time.time()
         b1 = bz.query(querydata)
+        dbprint("Done; took {0:.2f}.".format(time.time()-t))
+
         for bug in b1:
             bugdata[bug.id] = {}
-            bugdata[bug.id]['hidden'] = 0
+            bugdata[bug.id]['hidden'] = []
             bugdata[bug.id]['blocks'] = []
             bugdata[bug.id]['depends'] = []
             bugdata[bug.id]['reviewflag'] = i
@@ -298,7 +325,7 @@ def write_html(loader, template, data, dir, fname):
 
 # Selection functions (should all be predicates)
 def select_hidden(bug, bugd):
-    if bugd['hidden'] == 1:
+    if len(bugd['hidden']) > 0:
         return 1
     return 0
 
@@ -312,7 +339,7 @@ def select_merge(bug, bugd):
 def select_needsponsor(bug, bugd):
     wb = string.lower(bug.whiteboard)
     if (bugd['reviewflag'] == ' '
-            and bugd['needinfo'] == 0
+            and 'needinfo' not in bugd['hidden']
             and NEEDSPONSOR in bugd['blocks']
             and LEGAL not in bugd['blocks']
             and bug.bug_status != 'CLOSED'
@@ -342,7 +369,7 @@ def select_epel(bug, bugd):
     if (bugd['reviewflag'] == ' '
             and bug.product == 'Fedora EPEL'
             and bug.bug_status != 'CLOSED'
-            and bugd['hidden'] == 0
+            and len(bugd['hidden']) == 0
             and nobody(bug.assigned_to) == '(Nobody)'
             and bug.short_desc.find('Merge Review') < 0):
         return 1
@@ -354,7 +381,7 @@ def select_new(bug, bugd):
     if (bugd['reviewflag'] == ' '
             and bug.product == 'Fedora'
             and bug.bug_status != 'CLOSED'
-            and bugd['hidden'] == 0
+            and len(bugd['hidden']) == 0
             and nobody(bug.assigned_to) == '(Nobody)'
             and bug.short_desc.find('Merge Review') < 0):
         return 1
@@ -391,6 +418,25 @@ def std_row(bug, rowclass):
             'summary': to_unicode(bug.short_desc),
             }
 
+def hidden_reason(reasons):
+    r = ''
+    if 'buildfails' in reasons:
+        r += 'B '
+    if 'blocked' in reasons:
+        r += 'D '
+    if 'excessive' in reasons:
+        r += 'E '
+    if 'legal' in reasons:
+        r += 'L '
+    if 'needinfo' in reasons:
+        r += 'Ni '
+    if 'notready' in reasons:
+        r += 'Nr '
+    if 'stalled' in reasons:
+        r += 'S '
+
+    return r
+
 # Report generators
 def report_hidden(bugs, bugdata, loader, tmpdir, subs):
     data = deepcopy(subs)
@@ -402,9 +448,10 @@ def report_hidden(bugs, bugdata, loader, tmpdir, subs):
         if select_hidden(i, bugdata[i.id]):
             rowclass = rowclass_with_sponsor(bugdata[i.id], data['count'])
             data['bugs'].append(std_row(i, rowclass))
+            data['bugs'][-1]['reason'] = hidden_reason(bugdata[i.id]['hidden'])
             data['count'] +=1
 
-    write_html(loader, 'plain.html', data, tmpdir, 'HIDDEN.html')
+    write_html(loader, 'hidden.html', data, tmpdir, 'HIDDEN.html')
 
     return data['count']
 
@@ -559,8 +606,10 @@ if __name__ == '__main__':
     options = parse_commandline()
     verbose = options.verbose
     config = parse_config(options.configfile)
+    if config['maxpackages']:
+        maxpackages = int(config['maxpackages'])
+    dbprint("Limiting to {0} packages".format(maxpackages))
     bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None, user=config['username'], password=config['password'])
-    #bz = bugzilla.RHBugzilla(url=config['url'], cookiefile=None)
     t = time.time()
     (bugs, bugdata, usermap) = run_query(bz)
     querytime = time.time() - t
