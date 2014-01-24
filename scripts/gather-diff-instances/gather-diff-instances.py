@@ -5,10 +5,12 @@
 # output to /var/log/instance-lists/timestamp
 # compare newest one to the last one
 # mail results to mailto, if any
+# ignore instances with a key_name in blacklist
 
 
 destdir='/var/log/instance-lists/'
 mailto='admin@fedoraproject.org'
+blacklist=['buildsys']  
 
 
 import sys
@@ -79,6 +81,8 @@ def diff_instances(old, new):
 
     uuids = set(new_uuids.keys() + old_uuids.keys())
     ret = []
+    ret_added = []
+    ret_removed = []
     removed = []
     added = []
     for uuid in sorted(uuids):
@@ -103,16 +107,19 @@ def diff_instances(old, new):
                 for k in changed:
                     ret.append("   %s changed from '%s' to '%s'" % (k, old_vm[k], new_vm[k]))
 
-    if added:
-        ret.append('Instance(s) Added:\n')
     for vm in added:
-        ret.append('  %s %s %s %s' % (uuid, vm['display_name'], vm['floating_ips'][0], vm['key_name']))
-    if removed:
-        ret.append('Instance(s) Removed:\n')
-    for vm in removed:
-        if vm['floating_ips'][0]:
-         ret.append('  %s %s %s %s' % (uuid, vm['display_name'], vm['floating_ips'][0], vm['key_name']))    
+        if vm['key_name'] not in blacklist:
+            ret_added.append('  %s %s %s %s' % (uuid, vm['display_name'], vm['floating_ips'][0], vm['key_name']))
+    if ret_added:
+        ret_added[:0].append('Instance(s) Added:\n')
 
+    for vm in removed:
+        if vm['floating_ips'][0] and (vm['key_name'] not in blacklist):
+            ret_removed.append('  %s %s %s %s' % (uuid, vm['display_name'], vm['floating_ips'][0], vm['key_name'])) 
+    if ret_removed:
+        ret_removed[:0].append('Instance(s) Removed:\n')   
+
+    ret = ret + ret_added + ret_removed
     return ret
 
 
