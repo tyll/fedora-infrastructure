@@ -22,7 +22,6 @@ except ImportError:
     from email.MIMEText import MIMEText
 
 import hashlib
-md5_constructor = hashlib.md5
 
 # Reading buffer size
 BUFFER_SIZE = 4096
@@ -108,7 +107,19 @@ def main():
 
     form = cgi.FieldStorage()
     name = check_form(form, 'name')
-    checksum = check_form(form, 'md5sum')
+
+    # Search for the file hash, start with stronger hash functions
+    if form.has_key('sha512sum'):
+        checksum = check_form(form, 'sha512sum')
+        hash_type = "sha512"
+
+    elif form.has_key('md5sum'):
+        # Fallback on md5, as it's what we currently use
+        checksum = check_form(form, 'md5sum')
+        hash_type = "md5"
+
+    else:
+        send_error('Required checksum is not present.')
 
     action = None
     upload_file = None
@@ -121,7 +132,7 @@ def main():
         action = 'check'
         filename = check_form(form, 'filename')
         filename = os.path.basename(filename)
-        print >> sys.stderr, '[username=%s] Checking file status: NAME=%s FILENAME=%s MD5SUM=%s' % (username, name, filename, checksum)
+        print >> sys.stderr, '[username=%s] Checking file status: NAME=%s FILENAME=%s %sSUM=%s' % (username, name, filename, hash_type.upper(), checksum)
     else:
         action = 'upload'
         if form.has_key('file'):
@@ -131,7 +142,7 @@ def main():
             filename = os.path.basename(upload_file.filename)
         else:
             send_error('Required field "file" is not present.')
-        print >> sys.stderr, '[username=%s] Processing upload request: NAME=%s FILENAME=%s MD5SUM=%s' % (username, name, filename, checksum)
+        print >> sys.stderr, '[username=%s] Processing upload request: NAME=%s FILENAME=%s %sSUM=%s' % (username, name, filename, hash_type.upper(), checksum)
 
     module_dir = os.path.join(CACHE_DIR, name)
     hash_dir =  os.path.join(module_dir, filename, checksum)
@@ -167,7 +178,7 @@ def main():
     tmpfd = open(tmpfile, 'w')
 
     # now read the whole file in
-    m = md5_constructor()
+    m = getattr(hashlib, hash_type)()
     filesize = 0
     while True:
         data = upload_file.file.read(BUFFER_SIZE)
@@ -193,7 +204,7 @@ def main():
     os.chmod(dest_file, 0644)
 
     print >> sys.stderr, '[username=%s] Stored %s (%d bytes)' % (username, dest_file, filesize)
-    print 'File %s size %d MD5 %s stored OK' % (filename, filesize, checksum)
+    print 'File %s size %d %s %s stored OK' % (filename, filesize, hash_type.upper(), checksum)
     send_email(name, checksum, filename, username)
 
 if __name__ == '__main__':
