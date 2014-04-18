@@ -113,11 +113,6 @@ def main():
         checksum = check_form(form, 'sha512sum')
         hash_type = "sha512"
 
-    elif form.has_key('md5sum'):
-        # Fallback on md5, as it's what we currently use
-        checksum = check_form(form, 'md5sum')
-        hash_type = "md5"
-
     else:
         send_error('Required checksum is not present.')
 
@@ -146,10 +141,6 @@ def main():
 
     module_dir = os.path.join(CACHE_DIR, name)
     hash_dir = os.path.join(module_dir, filename, hash_type, checksum)
-
-    if hash_type == "md5":
-        # Preserve compatibility with the current folder hierarchy for md5
-        hash_dir =  os.path.join(module_dir, filename, checksum)
 
     # first test if the module really exists
     cvs_dir = os.path.join(CVSREPO, name)
