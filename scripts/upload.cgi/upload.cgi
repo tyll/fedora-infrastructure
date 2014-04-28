@@ -197,7 +197,7 @@ def main():
     check_checksum = m.hexdigest()
     if checksum != check_checksum:
         os.unlink(tmpfile)
-        send_error("MD5 check failed. Received %s instead of %s." % (check_checksum, checksum))
+        send_error("Checksum (%s) verification failed. Received %s instead of %s." % (hash_type, check_checksum, checksum))
 
     # wow, even the checksum matches. make sure full path is valid now
     if not os.path.isdir(hash_dir):
